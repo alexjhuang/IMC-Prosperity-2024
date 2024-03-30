@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-df = pd.read_csv('results1.csv', sep=';')
+df = pd.read_csv('results2.csv', sep=';')
 
 df['day'] = pd.to_numeric(df['day'])
 df['timestamp'] = pd.to_numeric(df['timestamp'])
@@ -55,8 +55,8 @@ print(f"Security with the Highest Profit: {highest_profit_security}")
 # Assuming 'timestamp' is a suitable proxy for time
 plt.figure(figsize=(10, 6))
 for security in df['product'].unique():
-    subset = df[df['product'] == security]
-    subset['cumulative_profit_loss'] = subset['profit_and_loss'].cumsum()
+    subset = df[df['product'] == security].copy()
+    subset.loc[:, 'cumulative_profit_loss'] = subset['profit_and_loss'].cumsum()
     plt.plot(subset['timestamp'], subset['cumulative_profit_loss'], label=security)
 plt.title('Cumulative Profit/Loss Over Time')
 plt.xlabel('Timestamp')
@@ -76,7 +76,7 @@ plt.show()
 # This requires the win/loss ratio calculations done previously
 # Assuming 'aggregated_results' contains this data
 plt.figure(figsize=(10, 6))
-sns.barplot(data=aggregated_results, x='Security', y='Win/Loss Ratio', palette='bright')
+sns.barplot(data=aggregated_results, x='Security', y='Win/Loss Ratio', color='skyblue')
 plt.title('Win/Loss Ratio per Security')
 plt.xlabel('Security')
 plt.ylabel('Win/Loss Ratio')
@@ -85,46 +85,24 @@ plt.show()
 
 # 4. Maximum Drawdown per Security
 plt.figure(figsize=(10, 6))
-sns.barplot(data=aggregated_results, x='Security', y='Maximum Drawdown', palette='dark')
+sns.barplot(data=aggregated_results, hue='Security', y='Maximum Drawdown', palette='dark', legend=False)
 plt.title('Maximum Drawdown per Security')
 plt.xlabel('Security')
 plt.ylabel('Maximum Drawdown')
 plt.xticks(rotation=45)
 plt.show()
 
-# 5. Bid-Ask Spread Over Time
-plt.figure(figsize=(12, 6))
-sns.lineplot(data=df, x='timestamp', y='bid_ask_spread', hue='product')
-plt.title('Bid-Ask Spread Over Time')
-plt.xlabel('Timestamp')
-plt.ylabel('Spread')
-plt.show()
 
-# 6. Inventory Levels Over Time
-# This plot assumes you have a 'inventory' column representing your inventory level for each security over time
-plt.figure(figsize=(12, 6))
-for security in df['product'].unique():
-    inventory_df = df[df['product'] == security]  # Assuming inventory tracking exists
-    plt.plot(inventory_df['timestamp'], inventory_df['inventory'], label=security)
-plt.title('Inventory Levels Over Time')
-plt.xlabel('Timestamp')
-plt.ylabel('Inventory Level')
+# 5. Bid-Ask spread on PNL
+avg_pnl_per_spread = df.groupby('bid_ask_spread')['profit_and_loss'].mean().reset_index()
+plt.figure(figsize=(10, 6))
+plt.scatter(df['bid_ask_spread'], df['profit_and_loss'], alpha=0.5, label='Individual Trades')
+plt.plot(avg_pnl_per_spread['bid_ask_spread'], avg_pnl_per_spread['profit_and_loss'], color='red', label='Average P&L')
+plt.title('P&L in Relation to Bid-Ask Spread')
+plt.xlabel('Bid-Ask Spread')
+plt.ylabel('Profit and Loss')
+plt.grid(True)
 plt.legend()
-plt.show()
-
-# 7. Order Imbalance Over Time
-df['order_imbalance'] = (df['bid_volume_1'] - df['ask_volume_1']) / (df['bid_volume_1'] + df['ask_volume_1'])
-plt.figure(figsize=(12, 6))
-sns.lineplot(data=df, x='timestamp', y='order_imbalance', hue='product')
-plt.title('Order Imbalance Over Time')
-plt.xlabel('Timestamp')
-plt.ylabel('Order Imbalance')
-plt.show()
-
-# 8. Profit/Loss vs. Order Imbalance
-plt.figure(figsize=(12, 6))
-sns.scatterplot(data=df, x='order_imbalance', y='profit_and_loss', hue='product')
-plt.title('Profit/Loss vs. Order Imbalance')
-plt.xlabel('Order Imbalance')
-plt.ylabel('Profit/Loss')
+plt.axhline(0, color='grey', lw=1, ls='--')
+plt.axvline(0, color='grey', lw=1, ls='--')
 plt.show()
