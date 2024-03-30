@@ -10,6 +10,8 @@ class Trader:
         print("Observations: " + str(state.observations))
         result = {}
         for product in state.order_depths:
+            if product == "AMETHYSTS":
+                continue
             order_depth: OrderDepth = state.order_depths[product]
             orders: List[Order] = []
             acceptable_price = 10;  # Participant should calculate this value
