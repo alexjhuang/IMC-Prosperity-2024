@@ -5,13 +5,11 @@ import string
 class Trader:
     
     def run(self, state: TradingState):
-        # Only method required. It takes all buy and sell orders for all symbols as an input, and outputs a list of orders to be sent
         print("traderData: " + state.traderData)
         print("Observations: " + str(state.observations))
+
         result = {}
         for product in state.order_depths:
-            if product == "AMETHYSTS":
-                continue
             order_depth: OrderDepth = state.order_depths[product]
             orders: List[Order] = []
             acceptable_price = 10;  # Participant should calculate this value
