@@ -4,39 +4,6 @@ import json
 from typing import Any
 
 class Trader:
-    def calculate_current_inventory(self, own_trades, all_products):
-        inventory = {product: 0 for product in all_products}  # Initialize all products with 0
-        for symbol, trades in own_trades.items():
-            for trade in trades:
-                # Assuming 'symbol' directly maps to 'product'
-                if trade.quantity > 0:
-                    inventory[symbol] += trade.quantity
-                else:
-                    inventory[symbol] += trade.quantity
-        return inventory
-
-    def calculate_order_quantity(self, market_liquidity, market_volatility, current_inventory, max_inventory, min_inventory):
-        optimal_inventory = (max_inventory + min_inventory) / 2
-        inventory_gap = current_inventory - optimal_inventory
-        
-        base_order_size = market_liquidity * 0.3  # Example: 10% of market liquidity
-        volatility_adjustment = max(1, 1 - market_volatility)  # Reduce size in volatile markets
-        
-        if inventory_gap > 0:
-            # Inventory is above optimal, prefer selling
-            sell_quantity = base_order_size * volatility_adjustment
-            buy_quantity = sell_quantity + inventory_gap  # Buy less if inventory is high
-        elif inventory_gap < 0:
-            # Inventory is below optimal, prefer buying
-            buy_quantity = base_order_size * volatility_adjustment
-            sell_quantity = buy_quantity * 0.5  # Sell less if inventory is low
-        else:
-            # Inventory is optimal, balance buying and selling
-            buy_quantity = sell_quantity = base_order_size * volatility_adjustment
-
-        return int(buy_quantity), int(sell_quantity)
-    
-
     def run(self, state: TradingState):
         result = {}
         for product in state.order_depths:
@@ -55,18 +22,10 @@ class Trader:
                 buy_price = best_bid + adjusted_spread
                 sell_price = best_ask - adjusted_spread
                 
-                # Adjust order quantities dynamically (simplified example)
-                market_liquidity = 100  # Placeholder
-                market_volatility = 0.1  # Placeholder
-                current_inventory = self.calculate_current_inventory(state.own_trades, state.listings.keys())[product]
-                max_inventory = 20 
-                min_inventory = -20 
-                
-                buy_quantity, sell_quantity = self.calculate_order_quantity(
-                    market_liquidity, market_volatility,
-                    current_inventory, max_inventory, min_inventory
-                )
-                buy_quantity, sell_quantity = 10, 10
+                if product == "STARFRUIT":
+                    buy_quantity, sell_quantity = 10, 10
+                else:
+                    buy_quantity, sell_quantity = 1, 1
                 
                 orders.append(Order(product, buy_price, buy_quantity))
                 orders.append(Order(product, sell_price, -sell_quantity))
