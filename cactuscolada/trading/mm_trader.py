@@ -23,7 +23,7 @@ class Trader:
         
         prices = self.price_history[product]
         short_term_period = 10
-        long_term_period = 50
+        long_term_period = 100
 
         if len(prices) < long_term_period:
             return 0
@@ -35,7 +35,7 @@ class Trader:
         ema_difference = short_term_ema - long_term_ema
         normalized_difference = ema_difference / current_price  # Normalize by the current price for scale
 
-        trend_strength = np.clip(normalized_difference * 10, -1, 1)  # Adjust multiplier as needed for sensitivity
+        trend_strength = np.clip(normalized_difference * 1000, -1, 1)  # Adjust multiplier as needed for sensitivity
 
         return trend_strength
 
