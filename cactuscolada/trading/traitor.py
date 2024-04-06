@@ -6,57 +6,50 @@ import numpy as np
 
 class Trader:
     def __init__(self):
-        resource_data: Dict[Symbol: Data] = {}
-        resource_strategies: Dict[Symbol: Strategy] = {}
-        orderManager: OrderManager = OrderManager()
+        self.resource_data: Dict[Symbol: Data] = {"AMETHYSTS": Data("AMETHYSTS"), "STARFRUIT": Data("STARFRUIT")}
+        self.resource_strategies: Dict[Symbol: function] = {"AMETHYSTS": self.tradeAmethyst, "STARFRUIT": self.tradeStarfruit}
+        self.orderManager: OrderManager = OrderManager()
+    
+    def processData(self, state: TradingState):
+        pass
 
     def run(self, state: TradingState):
-        result = {}
-        for product in state.order_depths:
-            order_depth: OrderDepth = state.order_depths[product]
-            orders: List[Order] = []
+        for product in state.position.keys():
+            self.processData(product, state)
+            self.resource_strategies[product]()
 
-            if len(order_depth.sell_orders) > 0 and len(order_depth.buy_orders) > 0:
-                best_ask, best_ask_amount = list(order_depth.sell_orders.items())[0]
-                best_bid, best_bid_amount = list(order_depth.buy_orders.items())[0]
-                
-                pos = state.position.get(product, 0)
-                buy_price, buy_quantity, sell_price, sell_quantity = self.get_buy_sell(product, pos, best_bid, best_ask)
-                
-                orders.append(Order(product, buy_price, buy_quantity))
-                orders.append(Order(product, sell_price, -sell_quantity))
-            
-            result[product] = orders
-    
         traderData = "SAMPLE" # String value holding Trader state data required. It will be delivered as TradingState.traderData on next execution.
         
+        result = self.orderManager.getAllOrders()
+
         conversions = 1
         logger.flush(state, result, conversions, traderData)
         return result, conversions, traderData
+    
+    def tradeAmethyst(self):
+        pass
+
+    def tradeStarfruit(self):
+        pass
 
 class Data:
-    def __init__(self) -> None:
-        self.product_limit = 0
-        self.position = 0
+    def __init__(self, symbol: str) -> None:
+        self.symbol: str = symbol
+        self.product_limit: int = 0
+        self.position: int = 0
 
 class OrderManager:
     def __init__(self):
         self.all_orders: Dict[Symbol: list[Order]] = {}
         pass
     
-    def createOrder(self, product: Symbol, order: Order):
-        self.all_orders[product].append(order)
+    def createOrder(self, product: Symbol, price: int, quantity: int, is_buy: bool):
+        if not is_buy:
+            quantity *= -1
+        self.all_orders[product].append(Order(product, price, quantity))
     
     def getAllOrders(self):
         return self.all_orders
-    
-class Strategy:
-    def __init__(self, order_manager: OrderManager):
-        pass
-
-    def trade(data: Data):
-        pass
-
 
 
 class Logger:
