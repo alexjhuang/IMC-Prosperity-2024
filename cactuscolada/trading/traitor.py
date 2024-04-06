@@ -3,19 +3,18 @@ from typing import List
 import json
 from typing import Any
 import numpy as np
+import collections
+from typing import Dict, Tuple
 
 class Trader:
     def __init__(self):
-        self.resource_data: Dict[Symbol: Data] = {"AMETHYSTS": Data("AMETHYSTS"), "STARFRUIT": Data("STARFRUIT")}
+        self.resource_data: Dict[Symbol: Data] = {"AMETHYSTS": AmethystData("AMETHYSTS"), "STARFRUIT": StarfruitData("STARFRUIT")}
         self.resource_strategies: Dict[Symbol: function] = {"AMETHYSTS": self.tradeAmethyst, "STARFRUIT": self.tradeStarfruit}
         self.orderManager: OrderManager = OrderManager()
-    
-    def processData(self, state: TradingState):
-        pass
 
     def run(self, state: TradingState):
         for product in state.position.keys():
-            self.processData(product, state)
+            self.resource_data[product].update(state)
             self.resource_strategies[product]()
 
         traderData = "SAMPLE" # String value holding Trader state data required. It will be delivered as TradingState.traderData on next execution.
@@ -36,7 +35,30 @@ class Data:
     def __init__(self, symbol: str) -> None:
         self.symbol: str = symbol
         self.product_limit: int = 0
-        self.position: int = 0
+    
+    def process(self, state: TradingState) -> None:
+        pass
+
+
+class StarfruitData(Data):
+    def __init__(self, symbol: str) -> None:
+        self.product_limit = 20
+
+
+class AmethystData(Data):
+    def __init__(self, symbol: str) -> None:
+        self.symbol = symbol
+        self.product_limit = 20
+        self.acceptable_bid = 10000
+        self.acceptable_ask = 10000
+        self.buy_orders: collections.OrderedDict = None
+        self.sell_orders: collections.OrderedDict = None
+    
+    def process(self, state: TradingState) -> None:
+        order_depth = state.order_depths[self.symbol]
+
+        self.sell_orders = collections.OrderedDict(sorted(order_depth.sell_orders.items()))
+        self.buy_orders =  collections.OrderedDict(sorted(order_depth.buy_orders.items(), reverse=True))
 
 class OrderManager:
     def __init__(self):
