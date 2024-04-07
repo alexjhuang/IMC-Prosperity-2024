@@ -71,6 +71,7 @@ class Trader:
 
         return int(round(nxt_price))
 
+
     def values_extract(self, order_dict, buy=0):
         tot_vol = 0
         best_val = -1
@@ -99,11 +100,8 @@ class Trader:
 
         cpos = self.position[product]
 
-        mx_with_buy = -1
-
         for ask, vol in osell.items():
             if ((ask < acc_bid) or ((self.position[product]<0) and (ask == acc_bid))) and cpos < self.POSITION_LIMIT['PEARLS']:
-                mx_with_buy = max(mx_with_buy, ask)
                 order_for = min(-vol, self.POSITION_LIMIT['PEARLS'] - cpos)
                 cpos += order_for
                 assert(order_for >= 0)

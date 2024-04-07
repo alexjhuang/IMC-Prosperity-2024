@@ -8,16 +8,15 @@ from typing import Dict, Tuple
 
 class Trader:
     def __init__(self):
-        self.resource_data: Dict[Symbol: Data] = {"AMETHYSTS": AmethystData("AMETHYSTS"), "STARFRUIT": StarfruitData("STARFRUIT")}
-        self.resource_strategies: Dict[Symbol: function] = {"AMETHYSTS": self.tradeAmethyst, "STARFRUIT": self.tradeStarfruit}
+        self.resource_traders: Dict[Symbol, Traitor] = {"AMETHYSTS": AmethystTrader("AMETHYSTS"), "STARFRUIT": StarfruitTrader("STARFRUIT")}
         self.orderManager: OrderManager = OrderManager()
 
     def run(self, state: TradingState):
         for product in state.position.keys():
-            self.resource_data[product].update(state)
-            self.resource_strategies[product]()
+            self.resource_traders[product].update(state)
+            self.resource_traders[product].trade(self.orderManager)
 
-        traderData = "SAMPLE" # String value holding Trader state data required. It will be delivered as TradingState.traderData on next execution.
+        traderData = "SAMPLE"
         
         result = self.orderManager.getAllOrders()
 
@@ -25,40 +24,6 @@ class Trader:
         logger.flush(state, result, conversions, traderData)
         return result, conversions, traderData
     
-    def tradeAmethyst(self):
-        pass
-
-    def tradeStarfruit(self):
-        pass
-
-class Data:
-    def __init__(self, symbol: str) -> None:
-        self.symbol: str = symbol
-        self.product_limit: int = 0
-    
-    def process(self, state: TradingState) -> None:
-        pass
-
-
-class StarfruitData(Data):
-    def __init__(self, symbol: str) -> None:
-        self.product_limit = 20
-
-
-class AmethystData(Data):
-    def __init__(self, symbol: str) -> None:
-        self.symbol = symbol
-        self.product_limit = 20
-        self.acceptable_bid = 10000
-        self.acceptable_ask = 10000
-        self.buy_orders: collections.OrderedDict = None
-        self.sell_orders: collections.OrderedDict = None
-    
-    def process(self, state: TradingState) -> None:
-        order_depth = state.order_depths[self.symbol]
-
-        self.sell_orders = collections.OrderedDict(sorted(order_depth.sell_orders.items()))
-        self.buy_orders =  collections.OrderedDict(sorted(order_depth.buy_orders.items(), reverse=True))
 
 class OrderManager:
     def __init__(self):
@@ -72,6 +37,86 @@ class OrderManager:
     
     def getAllOrders(self):
         return self.all_orders
+    
+
+class Traitor:
+    def __init__(self, symbol: str) -> None:
+        self.symbol: str = symbol
+        self.product_limit: int = 0
+    
+    def process(self, state: TradingState) -> None:
+        pass
+
+
+class StarfruitTrader(Traitor):
+    def __init__(self, symbol: str) -> None:
+        self.product_limit = 20
+
+
+class AmethystTrader(Traitor):
+    def __init__(self, symbol: str) -> None:
+        self.symbol = symbol
+        self.product_limit = 20
+        self.acceptable_bid = 10000
+        self.acceptable_ask = 10000
+        self.position = 0
+        self.buy_orders: collections.OrderedDict = None
+        self.sell_orders: collections.OrderedDict = None
+        self.best_buy_price = 10000
+        self.best_ask_price = 10000
+
+    
+    def process(self, state: TradingState) -> None:
+        self.position = state.position[self.symbol]
+
+        order_depth = state.order_depths[self.symbol]
+
+        self.sell_orders = collections.OrderedDict(sorted(order_depth.sell_orders.items()))
+        self.buy_orders =  collections.OrderedDict(sorted(order_depth.buy_orders.items(), reverse=True))
+
+        self.best_buy_price = next(reversed(self.buy_orders))
+        self.best_ask_price = next(reversed(self.sell_orders))
+
+
+    def trade(self, orderManager: OrderManager):
+        current_position = self.position
+
+        # buy underpriced asks
+        for ask, volume in self.sell_orders.items():
+            if current_position == self.product_limit:
+                continue
+            
+            order_volume = 0
+            if ask < self.acceptable_bid:
+                order_volume = min(-volume, self.product_limit - current_position)
+            elif (self.position < 0 and ask == self.acceptable_bid):
+                order_volume = min(-volume, -current_position)
+            
+            if order_volume != 0:
+                current_position += order_volume
+                orderManager.append(Order(self.symbol, ask, order_volume))
+
+        undercut_buy = self.best_buy_price + 1
+        bid_price = min(undercut_buy, self.acceptable_bid - 1)
+
+        if (current_position < self.product_limit) and (self.position < 0):
+            num = min(40, self.product_limit - current_position)
+            orderManager.createOrder(self.symbol, min(undercut_buy + 1, self.acceptable_bid - 1), num)
+            current_position += num
+
+        if (current_position < self.product_limit and (self.position > 15)):
+            num = min(40, self.product_limit - current_position)
+            orderManager.createOrder(self.symbol, min(undercut_buy - 1, self.acceptable_bid - 1), num)
+            cpos += num
+
+        if cpos < self.POSITION_LIMIT['PEARLS']:
+            num = min(40, self.product_limit - current_position)
+            orderManager.createOrder(self.symbol, bid_price, num)
+            cpos += num
+
+            
+        # sell overpriced bids
+
 
 
 class Logger:
