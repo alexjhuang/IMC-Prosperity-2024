@@ -58,9 +58,9 @@ class StarfruitTrader(Traitor):
         self.symbol = symbol
         self.product_limit = 20
         self.position = 0
-        self.cache = [0, 0, 0, 0]
-        self.coefficients = [-0.01869561,  0.0455032 ,  0.16316049,  0.8090892]
-        self.intercept = 4.481696494462085
+        self.cache = [None, None, None, None]
+        self.coefficients = [0.2257766, 0.14053319, 0.23432196, 0.39353907]
+        self.intercept = 29.397507911142384
         self.sell_orders = None
         self.buy_orders = None
         self.best_buy_price = 0
@@ -77,16 +77,22 @@ class StarfruitTrader(Traitor):
         mid_price = self.predict_next_price()
         self.acceptable_bid = mid_price - 1
         self.acceptable_ask = mid_price + 1
-        self.cache = [self.cache[1], self.cache[2], self.cache[3], mid_price]
 
 
     def predict_next_price(self):
-        prediction = self.intercept
-        for i, val in enumerate(self.cache):
-            prediction += val * self.coefficients[i]
+        prediction = 0
+        if None in self.cache:
+            prediction = (self.best_ask_price + self.best_buy_price) / 2
+        else:
+            prediction = self.intercept
+            for i, val in enumerate(self.cache):
+                prediction += val * self.coefficients[i]
 
+        self.cache = [self.cache[1], self.cache[2], self.cache[3], (self.best_ask_price + self.best_buy_price) / 2]
+        logger.print(prediction)
         return int(round(prediction))
     
+
     def trade(self, orderManager: OrderManager) -> None:
         current_position = self.position
 
@@ -96,29 +102,27 @@ class StarfruitTrader(Traitor):
                 current_position += order_volume
                 orderManager.createOrder(self.symbol, ask, order_volume)
 
-        undercut_buy = self.best_buy_price + 1
-        undercut_sell = self.best_ask_price - 1
-
-        bid_pr = min(undercut_buy, self.acceptable_bid) # we will shift this by 1 to beat this price
-        sell_price = max(undercut_sell, self.acceptable_ask)
+        bid_price = min(self.best_buy_price + 1, self.acceptable_bid) 
 
         if current_position < self.product_limit:
             num = self.product_limit - current_position
-            orderManager.createOrder(self.symbol, bid_pr, num)
+            orderManager.createOrder(self.symbol, bid_price, num)
             current_position += num
         
         current_position = self.position
         
         for bid, vol in self.buy_orders.items():
             if ((bid >= self.acceptable_ask) or ((self.position > 0) and (bid + 1 == self.acceptable_ask))) and current_position > -self.product_limit:
-                order_volume = max(-vol, -self.product_limit-current_position)
+                order_volume = max(-vol, -self.product_limit - current_position)
                 current_position += order_volume
                 orderManager.createOrder(self.symbol, bid, order_volume)
+
+        
+        sell_price = max(self.best_ask_price - 1, self.acceptable_ask)
 
         if current_position > -self.product_limit:
             num = -self.product_limit - current_position
             orderManager.createOrder(self.symbol, sell_price, num)
-            current_position += num
 
 
 class AmethystTrader(Traitor):
