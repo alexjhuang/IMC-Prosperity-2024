@@ -12,18 +12,15 @@ class Trader:
         self.orderManager: OrderManager = OrderManager()
 
     def run(self, state: TradingState):
-        for product in state.position.keys():
-            if product == "STARFRUIT":
-                continue
-
+        for product in self.resource_traders.keys():
             self.resource_traders[product].process(state)
             self.resource_traders[product].trade(self.orderManager)
 
         traderData = "SAMPLE"
-        
         result = self.orderManager.getAllOrders()
-
+        self.orderManager.clearOrders()
         conversions = 1
+
         logger.flush(state, result, conversions, traderData)
         return result, conversions, traderData
     
@@ -39,6 +36,9 @@ class OrderManager:
     
     def getAllOrders(self):
         return self.all_orders
+
+    def clearOrders(self):
+        self.all_orders = {}
     
 
 class Traitor:
@@ -49,13 +49,80 @@ class Traitor:
     def process(self, state: TradingState) -> None:
         pass
 
-    def trade(self) -> None:
+    def trade(self, orderManager: OrderManager) -> None:
         pass
 
 
 class StarfruitTrader(Traitor):
     def __init__(self, symbol: str) -> None:
+        self.symbol = symbol
         self.product_limit = 20
+        self.position = 0
+        self.cache = [None, None, None, None]
+        self.coefficients = [0.2257766, 0.14053319, 0.23432196, 0.39353907]
+        self.intercept = 29.397507911142384
+        self.sell_orders = None
+        self.buy_orders = None
+        self.best_buy_price = 0
+        self.best_ask_price = 0
+        self.acceptable_bid = 0
+        self.acceptable_ask = 0
+    
+    def process(self, state: TradingState) -> None:
+        self.position = state.position.get(self.symbol, 0)
+        self.sell_orders = collections.OrderedDict(sorted(state.order_depths[self.symbol].sell_orders.items()))
+        self.buy_orders = collections.OrderedDict(sorted(state.order_depths[self.symbol].buy_orders.items(), reverse=True))
+        self.best_buy_price = next(reversed(self.buy_orders))
+        self.best_ask_price = next(reversed(self.sell_orders))
+        mid_price = self.predict_next_price()
+        self.acceptable_bid = mid_price - 1
+        self.acceptable_ask = mid_price + 1
+
+
+    def predict_next_price(self):
+        prediction = 0
+        if None in self.cache:
+            prediction = (self.best_ask_price + self.best_buy_price) / 2
+        else:
+            prediction = self.intercept
+            for i, val in enumerate(self.cache):
+                prediction += val * self.coefficients[i]
+
+        self.cache = [self.cache[1], self.cache[2], self.cache[3], (self.best_ask_price + self.best_buy_price) / 2]
+        logger.print(prediction)
+        return int(round(prediction))
+    
+
+    def trade(self, orderManager: OrderManager) -> None:
+        current_position = self.position
+
+        for ask, vol in self.sell_orders.items():
+            if ((ask <= self.acceptable_bid) or ((self.position < 0) and (ask == self.acceptable_bid + 1))) and current_position < self.product_limit:
+                order_volume = min(-vol, self.product_limit - current_position)
+                current_position += order_volume
+                orderManager.createOrder(self.symbol, ask, order_volume)
+
+        bid_price = min(self.best_buy_price + 1, self.acceptable_bid) 
+
+        if current_position < self.product_limit:
+            num = self.product_limit - current_position
+            orderManager.createOrder(self.symbol, bid_price, num)
+            current_position += num
+        
+        current_position = self.position
+        
+        for bid, vol in self.buy_orders.items():
+            if ((bid >= self.acceptable_ask) or ((self.position > 0) and (bid + 1 == self.acceptable_ask))) and current_position > -self.product_limit:
+                order_volume = max(-vol, -self.product_limit - current_position)
+                current_position += order_volume
+                orderManager.createOrder(self.symbol, bid, order_volume)
+
+        
+        sell_price = max(self.best_ask_price - 1, self.acceptable_ask)
+
+        if current_position > -self.product_limit:
+            num = -self.product_limit - current_position
+            orderManager.createOrder(self.symbol, sell_price, num)
 
 
 class AmethystTrader(Traitor):
@@ -72,7 +139,7 @@ class AmethystTrader(Traitor):
 
     
     def process(self, state: TradingState) -> None:
-        self.position = state.position[self.symbol]
+        self.position = state.position.get(self.symbol, 0)
 
         order_depth = state.order_depths[self.symbol]
 
@@ -99,51 +166,58 @@ class AmethystTrader(Traitor):
             
             if order_volume != 0:
                 current_position += order_volume
-                orderManager.append(Order(self.symbol, ask, order_volume))
+                orderManager.createOrder(self.symbol, ask, order_volume)
 
         undercut_buy = self.best_buy_price + 1
         bid_price = min(undercut_buy, self.acceptable_bid - 1)
 
-        if (current_position < self.product_limit) and (self.position < 0):
+        if (current_position < self.product_limit) and (self.position < 0): # give better bids, we need to get back to 0
             num = min(40, self.product_limit - current_position)
             orderManager.createOrder(self.symbol, min(undercut_buy + 1, self.acceptable_bid - 1), num)
             current_position += num
 
-        if (current_position < self.product_limit and (self.position > 15)):
+        if (current_position < self.product_limit and (self.position > 10)): # chill on buying, our position too positive
             num = min(40, self.product_limit - current_position)
             orderManager.createOrder(self.symbol, min(undercut_buy - 1, self.acceptable_bid - 1), num)
             current_position += num
 
-        if current_position < self.product_limit:
+        if current_position < self.product_limit: # in between, life as usual
             num = min(40, self.product_limit - current_position)
             orderManager.createOrder(self.symbol, bid_price, num)
             current_position += num
 
 
-        # sell overpriced bids
+        # sell to overpriced bids
         current_position = self.position
         undercut_sell = self.best_ask_price - 1
         sell_pr = max(undercut_sell, self.acceptable_ask + 1)
-
+        
         for bid, volume in self.buy_orders.items():
-            if ((bid > self.acceptable_ask) or ((self.position > 0) and (bid == self.acceptable_ask))) and current_position > -self.product_limit:
-                order_for = max(-volume, -self.product_limit)
-                # order_for is a negative number denoting how much we will sell
-                current_position += order_for
-                orderManager.createOrder(self.symbol, ask, order_volume)
+            if current_position == -self.product_limit:
+                continue
+            
+            order_volume = 0
+            if bid > self.acceptable_ask:
+                order_volume = max(-volume, -self.product_limit)
+            elif (self.position > 0) and (bid == self.acceptable_ask):
+                order_volume = max(-volume, -self.product_limit)
+            
+            if order_volume != 0:
+                current_position += order_volume
+                orderManager.createOrder(self.symbol, bid, order_volume)
 
-        if (current_position > -self.product_limit) and (self.position > 0):
-            num = max(-40, -self.product_limit- current_position)
+        if (current_position > -self.product_limit) and (self.position > 0): # give better asks, we need to get back to 0
+            num = max(-40, -self.product_limit - current_position)
             orderManager.createOrder(self.symbol, max(undercut_sell - 1, self.acceptable_ask + 1), num)
             current_position += num
 
-        if (current_position > -self.product_limit) and (self.position < -15):
-            num = max(-40, -self.product_limit-current_position)
+        if (current_position > -self.product_limit) and (self.position < -10): # chill on selling, our position too negative
+            num = max(-40, -self.product_limit - current_position)
             orderManager.createOrder(self.symbol, max(undercut_sell + 1, self.acceptable_ask + 1), num)
             current_position += num
 
-        if current_position > -self.product_limit:
-            num = max(-40, -self.product_limit-current_position)
+        if current_position > -self.product_limit: # in between, life as usual
+            num = max(-40, -self.product_limit - current_position)
             orderManager.createOrder(self.symbol, sell_pr, num)
             current_position += num
 
