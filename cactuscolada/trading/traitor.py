@@ -3,8 +3,10 @@ from typing import List
 import json
 from typing import Any
 import numpy as np
+import math
 import collections
 from typing import Dict, Tuple
+import jsonpickle
 
 class Trader:
     def __init__(self):
@@ -12,11 +14,14 @@ class Trader:
         self.orderManager: OrderManager = OrderManager()
 
     def run(self, state: TradingState):
+        if not self.resource_traders:
+            self.resource_traders = jsonpickle.decode(state.traderData) # refresh resource traders in case failed.
+
         for product in self.resource_traders.keys():
             self.resource_traders[product].process(state)
             self.resource_traders[product].trade(self.orderManager)
 
-        traderData = "SAMPLE"
+        traderData = jsonpickle.encode(self.resource_traders) # backup in case AWS messes up and deletes state
         result = self.orderManager.getAllOrders()
         self.orderManager.clearOrders()
         conversions = 1
@@ -75,8 +80,8 @@ class StarfruitTrader(Traitor):
         self.best_buy_price = next(reversed(self.buy_orders))
         self.best_ask_price = next(reversed(self.sell_orders))
         mid_price = self.predict_next_price()
-        self.acceptable_bid = mid_price - 1
-        self.acceptable_ask = mid_price + 1
+        self.acceptable_bid = int(math.floor(mid_price)) - 1
+        self.acceptable_ask = int(math.ceil(mid_price)) + 1
 
 
     def predict_next_price(self):
@@ -89,8 +94,10 @@ class StarfruitTrader(Traitor):
                 prediction += val * self.coefficients[i]
 
         self.cache = [self.cache[1], self.cache[2], self.cache[3], (self.best_ask_price + self.best_buy_price) / 2]
-        logger.print(prediction)
-        return int(round(prediction))
+        logger.print((self.best_ask_price + self.best_buy_price) / 2, prediction)
+        print(self.sell_orders, self.best_ask_price)
+        print(self.buy_orders, self.best_buy_price)
+        return prediction
     
 
     def trade(self, orderManager: OrderManager) -> None:
@@ -176,7 +183,7 @@ class AmethystTrader(Traitor):
             orderManager.createOrder(self.symbol, min(undercut_buy + 1, self.acceptable_bid - 1), num)
             current_position += num
 
-        if (current_position < self.product_limit and (self.position > 10)): # chill on buying, our position too positive
+        if (current_position < self.product_limit and (self.position > 18)): # chill on buying, our position too positive
             num = min(40, self.product_limit - current_position)
             orderManager.createOrder(self.symbol, min(undercut_buy - 1, self.acceptable_bid - 1), num)
             current_position += num
@@ -211,7 +218,7 @@ class AmethystTrader(Traitor):
             orderManager.createOrder(self.symbol, max(undercut_sell - 1, self.acceptable_ask + 1), num)
             current_position += num
 
-        if (current_position > -self.product_limit) and (self.position < -10): # chill on selling, our position too negative
+        if (current_position > -self.product_limit) and (self.position < -18): # chill on selling, our position too negative
             num = max(-40, -self.product_limit - current_position)
             orderManager.createOrder(self.symbol, max(undercut_sell + 1, self.acceptable_ask + 1), num)
             current_position += num
@@ -222,7 +229,6 @@ class AmethystTrader(Traitor):
             current_position += num
 
         return
-
 
 
 class Logger:

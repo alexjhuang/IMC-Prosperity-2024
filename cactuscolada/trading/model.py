@@ -8,27 +8,27 @@ data = pd.read_csv("results.csv", delimiter=';')
 
 # Filter for STARFRUIT only
 starfruit_data = data[data['product'] == 'STARFRUIT']['mid_price'].reset_index(drop=True)
-
+window_size = 5
 # Prepare data for regression model
 # Use the previous four prices to predict the next one
 X = []
 y = []
-for i in range(len(starfruit_data) - 4):
-    X.append(starfruit_data[i:i+4])
-    y.append(starfruit_data[i+4])
+for i in range(len(starfruit_data) - window_size):
+    X.append(starfruit_data[i:i + window_size])
+    y.append(starfruit_data[i + window_size])
 
 X = np.array(X)
 y = np.array(y)
 
 # Splitting the dataset into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=21)
 
 # Creating and training the linear regression model
 model = LinearRegression()
 model.fit(X_train, y_train)
 
 # Use the last four observed prices to make a prediction
-last_four_prices = starfruit_data[-4:].values.reshape(1, -1)
+last_four_prices = starfruit_data[-window_size:].values.reshape(1, -1)
 next_price_prediction = model.predict(last_four_prices)
 
 print("Predicted next price for STARFRUIT:", next_price_prediction[0])
