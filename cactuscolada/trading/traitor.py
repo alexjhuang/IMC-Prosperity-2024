@@ -78,8 +78,8 @@ class StarfruitTrader(Traitor):
         self.product_limit = 20
         self.position = 0
         self.cache = [None, None, None, None]
-        self.coefficients = [0.14430571, 0.20647024, 0.25689111, 0.37965707]
-        self.intercept = 64.0376335782039
+        self.coefficients = [0.18394571, 0.2109294, 0.2634117, 0.34123064]
+        self.intercept = 2.4307992791937068
         self.sell_orders = None
         self.buy_orders = None
         self.best_buy_price = 0

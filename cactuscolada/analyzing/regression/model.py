@@ -4,7 +4,14 @@ from sklearn.linear_model import LinearRegression
 import numpy as np
 
 # Read the data from a string, simulating reading from a file
-data = pd.read_csv("results2.csv", delimiter=';')
+files = ["../data_round1/prices_round_1_day_-2.csv", "../data_round1/prices_round_1_day_-1.csv", "../data_round1/prices_round_1_day_0.csv"]
+
+# Read and store all dataframes in a list
+dataframes = [pd.read_csv(file, delimiter=';') for file in files]
+
+# Concatenate all the dataframes
+data = pd.concat(dataframes, ignore_index=True)
+print("Total number of rows:", data.shape[0])
 
 # Filter for STARFRUIT only
 starfruit_data = data[data['product'] == 'STARFRUIT']['mid_price'].reset_index(drop=True)
@@ -21,7 +28,7 @@ X = np.array(X)
 y = np.array(y)
 
 # Splitting the dataset into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.01, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Creating and training the linear regression model
 model = LinearRegression()

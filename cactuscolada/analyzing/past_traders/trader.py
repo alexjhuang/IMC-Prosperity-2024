@@ -1,4 +1,4 @@
-from datamodel import OrderDepth, UserId, TradingState, Order
+from analyzing.past_traders.datamodel import OrderDepth, UserId, TradingState, Order
 from typing import List
 import string
 

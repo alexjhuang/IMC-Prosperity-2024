@@ -1,5 +1,5 @@
 from typing import Dict, List
-from datamodel import OrderDepth, TradingState, Order
+from analyzing.past_traders.datamodel import OrderDepth, TradingState, Order
 import collections
 from collections import defaultdict
 import random

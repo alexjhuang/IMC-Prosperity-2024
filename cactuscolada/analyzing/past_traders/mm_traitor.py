@@ -1,4 +1,4 @@
-from datamodel import *
+from analyzing.past_traders.datamodel import *
 from typing import List
 import json
 from typing import Any
