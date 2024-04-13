@@ -10,7 +10,7 @@ import jsonpickle
 
 class Trader:
     def __init__(self):
-        self.resource_traders: Dict[Symbol, Traitor] = {"AMETHYSTS": AmethystTrader("AMETHYSTS"), "STARFRUIT": StarfruitTrader("STARFRUIT"), "ORCHID": OrchidTrader("ORCHID")}
+        self.resource_traders: Dict[Symbol, Traitor] = {"AMETHYSTS": AmethystTrader("AMETHYSTS"), "STARFRUIT": StarfruitTrader("STARFRUIT"), "ORCHIDS": OrchidTrader("ORCHIDS")}
         self.orderManager: OrderManager = OrderManager()
 
     def run(self, state: TradingState):
@@ -21,11 +21,13 @@ class Trader:
             self.resource_traders[product].process(state)
             self.resource_traders[product].trade(self.orderManager)
 
-        traderData = jsonpickle.encode(self.resource_traders) # backup in case AWS messes up and deletes state
+        # traderData = jsonpickle.encode(self.resource_traders) # backup in case AWS messes up and deletes state
+        traderData = "sample"
         result = self.orderManager.getAllOrders()
         self.orderManager.clearOrders()
-        conversions = 1
+        conversions = self.orderManager.conversions
 
+        logger.print(self.orderManager.orchid_pnl)
         logger.flush(state, result, conversions, traderData)
         return result, conversions, traderData
     
@@ -34,18 +36,10 @@ class OrderManager:
     def __init__(self):
         self.all_orders: Dict[Symbol: list[Order]] = {}
         self.conversions: int = 0
+        self.orchid_pnl = 0
     
-    def createConversion(self, position, volume):
-        #- In case you have 10 items short (-10) you can only request from 1 to 10. Request for 11 or more will be fully ignored.
-        # check to make sure volume is valid
-        if position < 0 and volume > 0:
-            volume = min(-position, volume)
-            self.conversions += volume
-            return volume
-        elif position > 0 and volume < 0:
-            volume = min(position, -volume)
-            self.conversions += volume
-            return volume
+    def createConversion(self, position: int):
+        self.conversions = -position
     
     def createOrder(self, product: Symbol, price: int, quantity: int):
         if product not in self.all_orders:
@@ -81,8 +75,6 @@ class OrchidTrader(Traitor):
         self.stored_fee = 0.1 # per 1 unit long per timestamp
         self.sell_orders = None
         self.buy_orders = None
-        self.best_buy_price = 0
-        self.best_ask_price = 0
     
     def process(self, state: TradingState) -> None:
         bidPrice = state.observations.conversionObservations["ORCHIDS"].bidPrice
@@ -98,12 +90,30 @@ class OrchidTrader(Traitor):
 
         self.sell_orders = collections.OrderedDict(sorted(state.order_depths[self.symbol].sell_orders.items()))
         self.buy_orders = collections.OrderedDict(sorted(state.order_depths[self.symbol].buy_orders.items(), reverse=True))
-        self.best_buy_price = next(reversed(self.buy_orders))
-        self.best_ask_price = next(reversed(self.sell_orders))
+
         return
 
     def trade(self, orderManager: OrderManager) -> None:
-        current_position = self.position
+        current_position = self.position # should be 0
+
+        for ask, vol in self.sell_orders.items():
+            if current_position < self.product_limit and ask < self.adjusted_conversion_bid_price:
+                order_volume = min(-vol, self.product_limit - current_position)
+                current_position += order_volume
+                orderManager.createOrder(self.symbol, ask, order_volume)
+                # print pnl
+                orderManager.orchid_pnl += (self.adjusted_conversion_bid_price - ask) * order_volume
+        
+        for bid, vol in self.buy_orders.items():
+            if current_position > -self.product_limit and bid > self.adjusted_conversion_ask_price:
+                order_volume = max(-vol, -self.product_limit - current_position)
+                current_position += order_volume
+                orderManager.createOrder(self.symbol, bid, order_volume)
+                # print pnl
+                orderManager.orchid_pnl += (bid - self.adjusted_conversion_ask_price) * order_volume
+                
+
+        orderManager.createConversion(current_position)
 
         return None
 
