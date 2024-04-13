@@ -33,6 +33,19 @@ class Trader:
 class OrderManager:
     def __init__(self):
         self.all_orders: Dict[Symbol: list[Order]] = {}
+        self.conversions: int = 0
+    
+    def createConversion(self, position, volume):
+        #- In case you have 10 items short (-10) you can only request from 1 to 10. Request for 11 or more will be fully ignored.
+        # check to make sure volume is valid
+        if position < 0 and volume > 0:
+            volume = min(-position, volume)
+            self.conversions += volume
+            return volume
+        elif position > 0 and volume < 0:
+            volume = min(position, -volume)
+            self.conversions += volume
+            return volume
     
     def createOrder(self, product: Symbol, price: int, quantity: int):
         if product not in self.all_orders:
@@ -63,11 +76,35 @@ class OrchidTrader(Traitor):
         self.symbol = symbol
         self.product_limit = 100
         self.position = 0
+        self.adjusted_conversion_ask_price = 0
+        self.adjusted_conversion_bid_price = 0
+        self.stored_fee = 0.1 # per 1 unit long per timestamp
+        self.sell_orders = None
+        self.buy_orders = None
+        self.best_buy_price = 0
+        self.best_ask_price = 0
     
     def process(self, state: TradingState) -> None:
-        return None
+        bidPrice = state.observations.conversionObservations["ORCHIDS"].bidPrice
+        askPrice = state.observations.conversionObservations["ORCHIDS"].askPrice
+        importTariff = state.observations.conversionObservations["ORCHIDS"].importTariff
+        exportTariff = state.observations.conversionObservations["ORCHIDS"].exportTariff
+        transportFees = state.observations.conversionObservations["ORCHIDS"].transportFees
+
+        self.adjusted_conversion_ask_price = askPrice + importTariff + transportFees
+        self.adjusted_conversion_bid_price = bidPrice - exportTariff - transportFees
+
+        self.position = state.position.get(self.symbol, 0)
+
+        self.sell_orders = collections.OrderedDict(sorted(state.order_depths[self.symbol].sell_orders.items()))
+        self.buy_orders = collections.OrderedDict(sorted(state.order_depths[self.symbol].buy_orders.items(), reverse=True))
+        self.best_buy_price = next(reversed(self.buy_orders))
+        self.best_ask_price = next(reversed(self.sell_orders))
+        return
 
     def trade(self, orderManager: OrderManager) -> None:
+        current_position = self.position
+
         return None
 
 
