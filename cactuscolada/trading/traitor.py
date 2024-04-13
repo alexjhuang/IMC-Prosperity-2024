@@ -102,7 +102,7 @@ class OrchidTrader(Traitor):
                 current_position += order_volume
                 orderManager.createOrder(self.symbol, ask, order_volume)
                 # print pnl
-                orderManager.orchid_pnl += (self.adjusted_conversion_bid_price - ask) * order_volume
+                orderManager.orchid_pnl += (self.adjusted_conversion_bid_price - ask) * abs(order_volume)
         
         for bid, vol in self.buy_orders.items():
             if current_position > -self.product_limit and bid > self.adjusted_conversion_ask_price:
@@ -110,7 +110,7 @@ class OrchidTrader(Traitor):
                 current_position += order_volume
                 orderManager.createOrder(self.symbol, bid, order_volume)
                 # print pnl
-                orderManager.orchid_pnl += (bid - self.adjusted_conversion_ask_price) * order_volume
+                orderManager.orchid_pnl += (bid - self.adjusted_conversion_ask_price) * abs(order_volume)
                 
 
         orderManager.createConversion(current_position)
