@@ -1,16 +1,17 @@
 from datamodel import *
-from typing import List
 import json
 from typing import Any
 import numpy as np
 import math
 import collections
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 import jsonpickle
+from trading.datamodel import TradingState
+
 
 class Trader:
     def __init__(self):
-        self.resource_traders: Dict[Symbol, Traitor] = {"AMETHYSTS": AmethystTrader("AMETHYSTS"), "STARFRUIT": StarfruitTrader("STARFRUIT")}
+        self.resource_traders: Dict[Symbol, Traitor] = {"AMETHYSTS": AmethystTrader("AMETHYSTS"), "STARFRUIT": StarfruitTrader("STARFRUIT"), "ORCHID": OrchidTrader("ORCHID")}
         self.orderManager: OrderManager = OrderManager()
 
     def run(self, state: TradingState):
@@ -56,6 +57,19 @@ class Traitor:
 
     def trade(self, orderManager: OrderManager) -> None:
         pass
+
+
+class OrchidTrader(Traitor):
+    def __init__(self, symbol: str) -> None:
+        self.symbol = symbol
+        self.product_limit = 100
+        self.position = 0
+    
+    def process(self, state: TradingState) -> None:
+        return None
+
+    def trade(self, orderManager: OrderManager) -> None:
+        return None
 
 
 class StarfruitTrader(Traitor):
