@@ -14,9 +14,11 @@ data = pd.concat(dataframes, ignore_index=True)
 # Calculate rolling sum of last 10,000 SUNLIGHT data points
 data['SUNLIGHT_SUM_10K'] = data['SUNLIGHT'].rolling(window=10000, min_periods=1).sum()
 
+data_filtered = data[data.index > 10000]
+
 # Define features and target
-X = data[['SUNLIGHT_SUM_10K', 'HUMIDITY']]  # Features including new rolling sum feature
-y = data['ORCHIDS']                         # Target
+X = data_filtered[['SUNLIGHT_SUM_10K', 'HUMIDITY']]  # Features including new rolling sum feature
+y = data_filtered['ORCHIDS']                         # Target
 
 # Split the data into training and test sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -29,8 +31,10 @@ model.fit(X_train, y_train)
 y_pred = model.predict(X_test)
 
 # Evaluate the model
+mae = mean_absolute_error(y_test, y_pred)
 mse = mean_squared_error(y_test, y_pred)
 r2 = r2_score(y_test, y_pred)
 
+print("Mean Absolute Error:", mae)
 print("Mean Squared Error:", mse)
 print("R² Score:", r2)
