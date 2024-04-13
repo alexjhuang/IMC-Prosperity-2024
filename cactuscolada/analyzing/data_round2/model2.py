@@ -38,3 +38,9 @@ r2 = r2_score(y_test, y_pred)
 print("Mean Absolute Error:", mae)
 print("Mean Squared Error:", mse)
 print("R² Score:", r2)
+
+from sklearn.tree import export_text
+
+tree = model.estimators_[0]
+tree_rules = export_text(tree, feature_names=['SUNLIGHT', 'HUMIDITY'])
+print(tree_rules)

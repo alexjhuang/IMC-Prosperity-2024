@@ -6,7 +6,6 @@ import math
 import collections
 from typing import Dict, Tuple, List
 import jsonpickle
-from trading.datamodel import TradingState
 
 
 class Trader:
@@ -78,8 +77,8 @@ class StarfruitTrader(Traitor):
         self.product_limit = 20
         self.position = 0
         self.cache = [None, None, None, None]
-        self.coefficients = [0.18394571, 0.2109294, 0.2634117, 0.34123064]
-        self.intercept = 2.4307992791937068
+        self.coefficients = [0.18836653, 0.20711758, 0.26145864, 0.34260796]
+        self.intercept = 2.2675006548934107
         self.sell_orders = None
         self.buy_orders = None
         self.best_buy_price = 0
