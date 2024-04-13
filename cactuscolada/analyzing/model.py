@@ -4,11 +4,11 @@ from sklearn.linear_model import LinearRegression
 import numpy as np
 
 # Read the data from a string, simulating reading from a file
-data = pd.read_csv("results.csv", delimiter=';')
+data = pd.read_csv("results2.csv", delimiter=';')
 
 # Filter for STARFRUIT only
 starfruit_data = data[data['product'] == 'STARFRUIT']['mid_price'].reset_index(drop=True)
-window_size = 5
+window_size = 4
 # Prepare data for regression model
 # Use the previous four prices to predict the next one
 X = []
@@ -21,7 +21,7 @@ X = np.array(X)
 y = np.array(y)
 
 # Splitting the dataset into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=21)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.01, random_state=42)
 
 # Creating and training the linear regression model
 model = LinearRegression()

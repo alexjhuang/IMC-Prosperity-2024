@@ -64,8 +64,8 @@ class StarfruitTrader(Traitor):
         self.product_limit = 20
         self.position = 0
         self.cache = [None, None, None, None]
-        self.coefficients = [0.2257766, 0.14053319, 0.23432196, 0.39353907]
-        self.intercept = 29.397507911142384
+        self.coefficients = [0.14430571, 0.20647024, 0.25689111, 0.37965707]
+        self.intercept = 64.0376335782039
         self.sell_orders = None
         self.buy_orders = None
         self.best_buy_price = 0
@@ -183,7 +183,7 @@ class AmethystTrader(Traitor):
             orderManager.createOrder(self.symbol, min(undercut_buy + 1, self.acceptable_bid - 1), num)
             current_position += num
 
-        if (current_position < self.product_limit and (self.position > 18)): # chill on buying, our position too positive
+        if (current_position < self.product_limit and (self.position > 15)): # chill on buying, our position too positive
             num = min(40, self.product_limit - current_position)
             orderManager.createOrder(self.symbol, min(undercut_buy - 1, self.acceptable_bid - 1), num)
             current_position += num
@@ -218,7 +218,7 @@ class AmethystTrader(Traitor):
             orderManager.createOrder(self.symbol, max(undercut_sell - 1, self.acceptable_ask + 1), num)
             current_position += num
 
-        if (current_position > -self.product_limit) and (self.position < -18): # chill on selling, our position too negative
+        if (current_position > -self.product_limit) and (self.position < -15): # chill on selling, our position too negative
             num = max(-40, -self.product_limit - current_position)
             orderManager.createOrder(self.symbol, max(undercut_sell + 1, self.acceptable_ask + 1), num)
             current_position += num
