@@ -21,7 +21,7 @@ def humidity_penalty(humidity):
     
 data['Humidity_Penalty'] = data['HUMIDITY'].apply(humidity_penalty)
 
-cutoff = 2000
+cutoff = 2600
 data['Above_Cutoff'] = (data['SUNLIGHT'] > cutoff).astype(int)
 data['Count_Above_Cutoff_10K'] = data['Above_Cutoff'].rolling(window=10000, min_periods=1).sum()
 data['Percentage_Above_Cutoff_10K'] = (data['Count_Above_Cutoff_10K'] / 10000) * 100
@@ -37,21 +37,24 @@ def adjust_value(row):
         return adjustment
 
 data['Adjusted_Value'] = data.apply(adjust_value, axis=1)
+data['inverse_adjusted_value'] = 1 / data['Adjusted_Value']
 
-data["Production"] = data['Humidity_Penalty'] * data['Adjusted_Value']
+data["Production"] = data['Humidity_Penalty']
 data["inverse_production"] = 1 / data["Production"]
+
+data['SUNLIGHT_SUM_10K'] = data['SUNLIGHT'].rolling(window=10000, min_periods=1).sum()
 
 data_filtered = data[data.index > 10000]
 
 # Define features and target
-X = data_filtered[['inverse_production']]  # Features including new rolling sum feature
+X = data_filtered[['Humidity_Penalty', 'SUNLIGHT_SUM_10K']]  # Features including new rolling sum feature
 y = data_filtered['ORCHIDS']                         # Target
 
 # Split the data into training and test sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Train the model
-model = LinearRegression()
+model = RandomForestRegressor(n_estimators=10, random_state=42)
 model.fit(X_train, y_train)
 
 # Predict on the test set
@@ -65,5 +68,3 @@ r2 = r2_score(y_test, y_pred)
 print("Mean Absolute Error:", mae)
 print("Mean Squared Error:", mse)
 print("R² Score:", r2)
-
-print(data["Production"])
