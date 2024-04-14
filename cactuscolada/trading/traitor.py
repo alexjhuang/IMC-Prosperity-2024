@@ -123,7 +123,7 @@ class OrchidTrader(Traitor):
         return prediction
     
 
-    def trade2(self, orderManager: OrderManager) -> None:
+    def trade(self, orderManager: OrderManager) -> None:
         arbitrage_position = self.position # should be 0
         export_pnl = 0
         import_pnl = 0
@@ -153,7 +153,7 @@ class OrchidTrader(Traitor):
 
         return None
     
-    def trade(self, orderManager: OrderManager) -> None:
+    def trade2(self, orderManager: OrderManager) -> None:
         current_position = self.position
         real_position = self.position
 

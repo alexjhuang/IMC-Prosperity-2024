@@ -11,16 +11,14 @@ dataframes = [pd.read_csv(file, delimiter=';') for file in files]
 data = pd.concat(dataframes, ignore_index=True)
 
 orchids_data = data['ORCHIDS']
-window_size = 20
+window_size = 4
 # Prepare data for regression model
 # Use the previous four prices to predict the next one
 X = []
 y = []
-for day in data['DAY'].unique():
-    orchids_data = data.loc[data['DAY'] == day, 'ORCHIDS']
-    for i in range(len(orchids_data) - window_size):
-        X.append(orchids_data.iloc[i:i + window_size].mean())  # Use .iloc here to avoid index issues
-        y.append(orchids_data.iloc[i + window_size])
+for i in range(len(orchids_data) - window_size):
+    X.append(orchids_data[i:i + window_size])
+    y.append(orchids_data[i + window_size])
 
 X = np.array(X)
 y = np.array(y)
