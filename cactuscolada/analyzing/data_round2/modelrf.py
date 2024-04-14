@@ -18,8 +18,8 @@ data['SUNLIGHT_SUM_10K'] = data['SUNLIGHT'].rolling(window=10000, min_periods=1)
 data_filtered = data[data.index > 10000]
 
 # Define features and target
-X = data_filtered[['SUNLIGHT', 'HUMIDITY']]  # Features including new rolling sum feature
-y = data_filtered['ORCHIDS']                         # Target
+X = data[['SUNLIGHT', 'HUMIDITY']]  # Features including new rolling sum feature
+y = data['ORCHIDS']                         # Target
 
 # Split the data into training and test sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -30,7 +30,7 @@ model = DecisionTreeRegressor(
     max_depth=20,               # Limits the depth of the tree
     min_samples_split=50,      # Requires at least 200 samples to split a node
     min_samples_leaf=30,        # Requires at least 6 samples to form a leaf
-    max_leaf_nodes=200          # Maximum number of leaf nodes
+    max_leaf_nodes=300          # Maximum number of leaf nodes
 )
 model.fit(X_train, y_train)
 
@@ -48,5 +48,44 @@ print("R² Score:", r2)
 
 from sklearn.tree import export_text
 
-tree_rules = export_text(model, feature_names=['SUNLIGHT', 'HUMIDITY'])
-# print(tree_rules)
+tree_rules = export_text(model, feature_names=['SUNLIGHT', 'HUMIDITY'], max_depth=25)
+
+with open('tree_rules.txt', 'w') as file:
+    file.write(tree_rules)
+
+print("Decision tree rules exported successfully to 'tree_rules.txt'")
+
+from sklearn.tree import _tree
+
+def tree_to_code(tree, feature_names, output_file_path):
+    tree_ = tree.tree_
+    feature_name = [
+        feature_names[i] if i != _tree.TREE_UNDEFINED else "undefined!"
+        for i in tree_.feature
+    ]
+    
+    with open(output_file_path, 'w') as file:
+        file.write("def tree({}):\n".format(", ".join(feature_names)))
+
+        def recurse(node, depth):
+            indent = "  " * depth
+            if tree_.feature[node] != _tree.TREE_UNDEFINED:
+                name = feature_name[node]
+                threshold = tree_.threshold[node]
+                file.write("{}if {} <= {}:\n".format(indent, name, threshold))
+                recurse(tree_.children_left[node], depth + 1)
+                file.write("{}else:  # if {} > {}\n".format(indent, name, threshold))
+                recurse(tree_.children_right[node], depth + 1)
+            else:
+                # Adjust the output format for leaf nodes (values)
+                values = tree_.value[node]
+                # Assuming regression output or binary classification
+                prediction = values[0, 0]
+                if len(values[0]) > 1:  # Handling classification case
+                    prediction = np.argmax(values[0])  
+                file.write("{}return {}\n".format(indent, prediction))
+
+        recurse(0, 1)
+
+# Example usage
+tree_to_code(model, ['SUNLIGHT', 'HUMIDITY'], 'decision_tree_function.py')
