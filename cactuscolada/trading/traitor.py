@@ -149,9 +149,9 @@ class OrchidTrader(Traitor):
         if (export_pnl > 0) and (import_pnl > 0):
             logger.print(export_pnl, import_pnl, "Converting: ", arbitrage_position)
 
-        orderManager.createConversion(arbitrage_position)
+        orderManager.createConversion(self.position)
 
-        return None
+        return
     
     def trade2(self, orderManager: OrderManager) -> None:
         current_position = self.position
@@ -182,7 +182,7 @@ class OrchidTrader(Traitor):
             num = -self.product_limit - current_position
             orderManager.createOrder(self.symbol, self.future_adjusted_conversion_bid_price - 3, num)
         
-        orderManager.createConversion(real_position)
+        orderManager.createConversion(self.position)
 
 
 class StarfruitTrader(Traitor):
