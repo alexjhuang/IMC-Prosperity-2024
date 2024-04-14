@@ -82,16 +82,18 @@ class OrchidTrader(Traitor):
         self.best_ask_price = 0
         self.acceptable_bid = 0
         self.acceptable_ask = 0
+        self.bidPrice = 0
+        self.askPrice = 0
     
     def process(self, state: TradingState) -> None:
-        bidPrice = state.observations.conversionObservations["ORCHIDS"].bidPrice
-        askPrice = state.observations.conversionObservations["ORCHIDS"].askPrice
+        self.bidPrice = state.observations.conversionObservations["ORCHIDS"].bidPrice
+        self.askPrice = state.observations.conversionObservations["ORCHIDS"].askPrice
         importTariff = state.observations.conversionObservations["ORCHIDS"].importTariff
         exportTariff = state.observations.conversionObservations["ORCHIDS"].exportTariff
         transportFees = state.observations.conversionObservations["ORCHIDS"].transportFees
 
-        self.adjusted_conversion_ask_price = askPrice + importTariff + transportFees
-        self.adjusted_conversion_bid_price = bidPrice - exportTariff - transportFees
+        self.adjusted_conversion_ask_price = self.askPrice + importTariff + transportFees
+        self.adjusted_conversion_bid_price = self.bidPrice - exportTariff - transportFees
 
         self.position = state.position.get(self.symbol, 0)
 
@@ -100,9 +102,9 @@ class OrchidTrader(Traitor):
 
         self.best_buy_price = next(reversed(self.buy_orders))
         self.best_ask_price = next(reversed(self.sell_orders))
-        mid_price = self.predict_next_price()
-        self.acceptable_bid = int(math.floor(mid_price)) - 1
-        self.acceptable_ask = int(math.ceil(mid_price)) + 1
+        future_mid_price = self.predict_next_price()
+        self.future_adjusted_conversion_bid_price = int(math.floor(future_mid_price - exportTariff - transportFees)) # - (100 * self.stored_fee)))
+        self.future_adjusted_conversion_ask_price = int(math.ceil(future_mid_price + importTariff + transportFees))
 
         return
     
@@ -110,14 +112,14 @@ class OrchidTrader(Traitor):
     def predict_next_price(self):
         prediction = 0
         if None in self.cache:
-            prediction = (self.best_ask_price + self.best_buy_price) / 2
+            prediction = (self.bidPrice + self.askPrice) / 2
         else:
             prediction = self.intercept
             for i, val in enumerate(self.cache):
                 prediction += val * self.coefficients[i]
 
-        self.cache = [self.cache[1], self.cache[2], self.cache[3], (self.best_ask_price + self.best_buy_price) / 2]
-        logger.print((self.best_ask_price + self.best_buy_price) / 2, prediction)
+        self.cache = [self.cache[1], self.cache[2], self.cache[3], (self.bidPrice + self.askPrice) / 2]
+        logger.print((self.bidPrice + self.askPrice) / 2, self.cache[2])
         return prediction
     
 
@@ -153,36 +155,34 @@ class OrchidTrader(Traitor):
     
     def trade(self, orderManager: OrderManager) -> None:
         current_position = self.position
+        real_position = self.position
 
         for ask, vol in self.sell_orders.items():
-            if ((ask <= self.acceptable_bid) or ((self.position < 0) and (ask == self.acceptable_bid + 1))) and current_position < self.product_limit:
+            if (ask < self.adjusted_conversion_bid_price) and current_position < self.product_limit:
                 order_volume = min(-vol, self.product_limit - current_position)
+                real_position += order_volume
                 current_position += order_volume
                 orderManager.createOrder(self.symbol, ask, order_volume)
 
-        bid_price = min(self.best_buy_price + 1, self.acceptable_bid) 
-
         if current_position < self.product_limit:
             num = self.product_limit - current_position
-            orderManager.createOrder(self.symbol, bid_price, num)
+            orderManager.createOrder(self.symbol, self.future_adjusted_conversion_ask_price + 3, num)
             current_position += num
         
         current_position = self.position
         
         for bid, vol in self.buy_orders.items():
-            if ((bid >= self.acceptable_ask) or ((self.position > 0) and (bid + 1 == self.acceptable_ask))) and current_position > -self.product_limit:
+            if (bid > self.adjusted_conversion_ask_price) and current_position > -self.product_limit:
                 order_volume = max(-vol, -self.product_limit - current_position)
+                real_position += order_volume
                 current_position += order_volume
                 orderManager.createOrder(self.symbol, bid, order_volume)
 
-        
-        sell_price = max(self.best_ask_price - 1, self.acceptable_ask)
-
         if current_position > -self.product_limit:
             num = -self.product_limit - current_position
-            orderManager.createOrder(self.symbol, sell_price, num)
-    
-        return None
+            orderManager.createOrder(self.symbol, self.future_adjusted_conversion_bid_price - 3, num)
+        
+        orderManager.createConversion(real_position)
 
 
 class StarfruitTrader(Traitor):
