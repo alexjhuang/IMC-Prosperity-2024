@@ -27,10 +27,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 # Train the model
 model = DecisionTreeRegressor(
     random_state=42,
-    max_depth=25,               # Limits the depth of the tree
-    min_samples_split=20,      # Requires at least 200 samples to split a node
-    min_samples_leaf=10,        # Requires at least 6 samples to form a leaf
-    max_leaf_nodes=500          # Maximum number of leaf nodes
+    max_depth=10
 )
 model.fit(X_train, y_train)
 
@@ -66,15 +63,15 @@ def tree_to_code(tree, feature_names, output_file_path):
     
     with open(output_file_path, 'w') as file:
         file.write("def tree({}):\n".format(", ".join(feature_names)))
-
+    
         def recurse(node, depth):
-            indent = "  " * depth
+            indent = "\t" * depth
             if tree_.feature[node] != _tree.TREE_UNDEFINED:
                 name = feature_name[node]
                 threshold = tree_.threshold[node]
                 file.write("{}if {} <= {}:\n".format(indent, name, threshold))
                 recurse(tree_.children_left[node], depth + 1)
-                file.write("{}else:  # if {} > {}\n".format(indent, name, threshold))
+                file.write("{}else:\n".format(indent))
                 recurse(tree_.children_right[node], depth + 1)
             else:
                 # Adjust the output format for leaf nodes (values)

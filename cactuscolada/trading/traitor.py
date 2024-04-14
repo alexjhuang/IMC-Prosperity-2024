@@ -7,7 +7,6 @@ import collections
 from typing import Dict, Tuple, List
 import jsonpickle
 
-
 class Trader:
     def __init__(self):
         self.resource_traders: Dict[Symbol, Traitor] = {"AMETHYSTS": AmethystTrader("AMETHYSTS"), "STARFRUIT": StarfruitTrader("STARFRUIT"), "ORCHIDS": OrchidTrader("ORCHIDS")}
@@ -75,6 +74,7 @@ class OrchidTrader(Traitor):
         self.stored_fee = 0.1 # per 1 unit long per timestamp
         self.sell_orders = None
         self.buy_orders = None
+        self.predicted_price = 0
     
     def process(self, state: TradingState) -> None:
         bidPrice = state.observations.conversionObservations["ORCHIDS"].bidPrice
