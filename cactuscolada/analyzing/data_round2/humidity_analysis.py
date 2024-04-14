@@ -25,21 +25,21 @@ data['Humidity_Penalty'] = data['HUMIDITY'].apply(humidity_penalty)
 
 bins = [i/100 for i in range(0, 10)]
 
-# Add a 'bin' column to the data, representing the bin each humidity value falls into
 data['bin'] = pd.cut(data['Humidity_Penalty'], bins=bins, include_lowest=True, right=False)
 
 # Group by 'DAY' and 'bin', then calculate the average 'ORCHIDS' price for each group
 grouped_data = data.groupby(['DAY', 'bin'])['ORCHIDS'].mean().reset_index()
 
-# Pivot the grouped data to get separate columns for each 'DAY'
+# Pivot the data to get separate columns for each 'DAY'
 pivot_data = grouped_data.pivot(index='bin', columns='DAY', values='ORCHIDS')
 
-# Plotting the bar graph
-pivot_data.plot(kind='bar', figsize=(10, 6))
-plt.title('Average Price of ORCHIDS for Each Humidity Bin by Day')
+# Plotting the trend lines
+fig, ax = plt.subplots(figsize=(10, 6))
+pivot_data.plot(kind='line', marker='o', ax=ax)  # 'line' kind with markers at data points
+plt.title('Trend Lines of Average Price of ORCHIDS for Each Humidity Bin by Day')
 plt.xlabel('Humidity Bin')
 plt.ylabel('Average Price of ORCHIDS')
 plt.xticks(rotation=45)  # Rotate the x-axis labels for better readability
-plt.grid(axis='y', alpha=0.75)
+plt.grid(True, which='both', linestyle='--', linewidth=0.5)
 plt.legend(title='DAY')
 plt.show()
