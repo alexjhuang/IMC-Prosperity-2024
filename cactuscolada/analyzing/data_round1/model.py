@@ -4,25 +4,20 @@ from sklearn.linear_model import LinearRegression
 import numpy as np
 
 # Read the data from a string, simulating reading from a file
-files = ["../data_round1/prices_round_1_day_-2.csv", "../data_round1/prices_round_1_day_-1.csv", "../data_round1/prices_round_1_day_0.csv"]
+files = ["prices_round_1_day_-2.csv", "prices_round_1_day_-1.csv", "prices_round_1_day_0.csv"]
 
-# Read and store all dataframes in a list
-dataframes = [pd.read_csv(file, delimiter=';') for file in files]
-
-# Concatenate all the dataframes
-data = pd.concat(dataframes, ignore_index=True)
-print("Total number of rows:", data.shape[0])
-
-# Filter for STARFRUIT only
-starfruit_data = data[data['product'] == 'STARFRUIT']['mid_price'].reset_index(drop=True)
-window_size = 4
-# Prepare data for regression model
-# Use the previous four prices to predict the next one
 X = []
 y = []
-for i in range(len(starfruit_data) - window_size):
-    X.append(starfruit_data[i:i + window_size])
-    y.append(starfruit_data[i + window_size])
+
+for file in files:
+    df = pd.read_csv(file, delimiter=';')
+    starfruit_data = df[df['product'] == 'STARFRUIT']['mid_price'].reset_index(drop=True)
+    print(starfruit_data.head())  # Print head to verify data
+    
+    window_size = 4
+    for i in range(len(starfruit_data) - window_size):
+        X.append(starfruit_data[i:i + window_size].values)  # Create input feature window
+        y.append(starfruit_data[i + window_size])  # Create labels
 
 X = np.array(X)
 y = np.array(y)
