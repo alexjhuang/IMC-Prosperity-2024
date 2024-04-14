@@ -92,6 +92,7 @@ class OrchidTrader(Traitor):
         self.buy_orders = collections.OrderedDict(sorted(state.order_depths[self.symbol].buy_orders.items(), reverse=True))
 
         return
+    
 
     def trade(self, orderManager: OrderManager) -> None:
         current_position = self.position # should be 0

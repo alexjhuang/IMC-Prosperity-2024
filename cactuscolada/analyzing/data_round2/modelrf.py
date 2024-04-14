@@ -27,10 +27,10 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 # Train the model
 model = DecisionTreeRegressor(
     random_state=42,
-    max_depth=20,               # Limits the depth of the tree
-    min_samples_split=50,      # Requires at least 200 samples to split a node
-    min_samples_leaf=30,        # Requires at least 6 samples to form a leaf
-    max_leaf_nodes=300          # Maximum number of leaf nodes
+    max_depth=25,               # Limits the depth of the tree
+    min_samples_split=20,      # Requires at least 200 samples to split a node
+    min_samples_leaf=10,        # Requires at least 6 samples to form a leaf
+    max_leaf_nodes=500          # Maximum number of leaf nodes
 )
 model.fit(X_train, y_train)
 
@@ -48,7 +48,7 @@ print("R² Score:", r2)
 
 from sklearn.tree import export_text
 
-tree_rules = export_text(model, feature_names=['SUNLIGHT', 'HUMIDITY'], max_depth=25)
+tree_rules = export_text(model, feature_names=['SUNLIGHT', 'HUMIDITY'], max_depth=30)
 
 with open('tree_rules.txt', 'w') as file:
     file.write(tree_rules)
@@ -89,3 +89,15 @@ def tree_to_code(tree, feature_names, output_file_path):
 
 # Example usage
 tree_to_code(model, ['SUNLIGHT', 'HUMIDITY'], 'decision_tree_function.py')
+
+from decision_tree_function import tree
+
+test_predictions = [tree(row['SUNLIGHT'], row['HUMIDITY']) for index, row in X_test.iterrows()]
+
+mae = mean_absolute_error(y_test, test_predictions)
+mse = mean_squared_error(y_test, test_predictions)
+r2 = r2_score(y_test, test_predictions)
+
+print("Mean Absolute Error on Test Set:", mae)
+print("Mean Squared Error on Test Set:", mse)
+print("R² Score on Test Set:", r2)
