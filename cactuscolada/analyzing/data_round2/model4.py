@@ -12,11 +12,11 @@ data = pd.concat(dataframes, ignore_index=True)
 
 def humidity_penalty(humidity):
     if humidity < 60:
-        return (60 - humidity) * 0.4
+        return 100 - ((60 - humidity) * 0.4)
     elif humidity > 80:
-        return (humidity - 80) * 0.4
+        return 100 - ((humidity - 80) * 0.4)
     else:
-        return 0
+        return 100
 
 def sunlight_penalty(sunlight, cutoff=2500):
     # Convert boolean array to integer by using astype(int), which makes True to 1 and False to 0
@@ -25,12 +25,12 @@ def sunlight_penalty(sunlight, cutoff=2500):
     percent_above = (count_above / total_count) * 100
     required_percent = 58.333
     if percent_above < required_percent:
-        return (required_percent - percent_above) * (4 / 1.3888888899)
-    return 0
+        return 100 - ((required_percent - percent_above) * (4 / 1.3888888899))
+    return 100
 
 best_mse = float('inf')
 
-for cutoff in range(2480, 2520):
+for cutoff in range(2500, 2501):
     # Calculate sunlight penalty using a rolling window of 10,000 timestamps
     data['sunlight_penalty'] = data['SUNLIGHT'].rolling(window=10000, min_periods=10000).apply(
         lambda x: sunlight_penalty(x, cutoff), raw=False
@@ -41,12 +41,14 @@ for cutoff in range(2480, 2520):
     for lag in range(0, 11400):
         data['lagged_ORCHIDS'] = data['ORCHIDS'].shift(-lag)  # Shift backwards for future prediction
 
-        data['Production_Index'] = 100 - (data['humidity_penalty'] + data['sunlight_penalty'])
+        data['Humididy_Index'] = 100 / (data['humidity_penalty'])
+        data['Sunlight_Index'] = 100 / (data['sunlight_penalty'])
+        data['Production_Index'] = data['Humididy_Index'] * data['Sunlight_Index']
 
         # Filter data to avoid NaNs and use indices after the initial 10,000
         data_filtered = data[(data.index > 10000) & (data.index < len(data) - lag)]
 
-        X = data_filtered[['humidity_penalty', 'sunlight_penalty', 'EXPORT_TARIFF', 'IMPORT_TARIFF', 'TRANSPORT_FEES']]  # New feature
+        X = data_filtered[['Production_Index', 'Sunlight_Index']]  # New feature
         y = data_filtered['lagged_ORCHIDS']  # Lagged price
 
         # Split and train the model
