@@ -20,14 +20,13 @@ class Trader:
             self.resource_traders[product].process(state)
             self.resource_traders[product].trade(self.orderManager)
 
-        # traderData = jsonpickle.encode(self.resource_traders) # backup in case AWS messes up and deletes state
-        traderData = "sample"
+        traderData = jsonpickle.encode(self.resource_traders) # backup in case AWS messes up and deletes state
         result = self.orderManager.getAllOrders()
         self.orderManager.clearOrders()
         conversions = self.orderManager.conversions
 
-        logger.print(self.orderManager.orchid_pnl)
-        logger.flush(state, result, conversions, traderData)
+        logger.print(self.orderManager.orchid_export_pnl, self.orderManager.orchid_import_pnl)
+        logger.flush(state, result, conversions, "sample")
         return result, conversions, traderData
     
 
@@ -35,7 +34,8 @@ class OrderManager:
     def __init__(self):
         self.all_orders: Dict[Symbol: list[Order]] = {}
         self.conversions: int = 0
-        self.orchid_pnl = 0
+        self.orchid_export_pnl = 0
+        self.orchid_import_pnl = 0
     
     def createConversion(self, position: int):
         self.conversions = -position
@@ -75,6 +75,13 @@ class OrchidTrader(Traitor):
         self.sell_orders = None
         self.buy_orders = None
         self.predicted_price = 0
+        self.cache = [None, None, None, None]
+        self.coefficients = [-0.00288106, 0.01107265, -0.01295004, 1.00473299]
+        self.intercept = 0.02269031575860936
+        self.best_buy_price = 0
+        self.best_ask_price = 0
+        self.acceptable_bid = 0
+        self.acceptable_ask = 0
     
     def process(self, state: TradingState) -> None:
         bidPrice = state.observations.conversionObservations["ORCHIDS"].bidPrice
@@ -91,31 +98,90 @@ class OrchidTrader(Traitor):
         self.sell_orders = collections.OrderedDict(sorted(state.order_depths[self.symbol].sell_orders.items()))
         self.buy_orders = collections.OrderedDict(sorted(state.order_depths[self.symbol].buy_orders.items(), reverse=True))
 
+        self.best_buy_price = next(reversed(self.buy_orders))
+        self.best_ask_price = next(reversed(self.sell_orders))
+        mid_price = self.predict_next_price()
+        self.acceptable_bid = int(math.floor(mid_price)) - 1
+        self.acceptable_ask = int(math.ceil(mid_price)) + 1
+
         return
     
+    
+    def predict_next_price(self):
+        prediction = 0
+        if None in self.cache:
+            prediction = (self.best_ask_price + self.best_buy_price) / 2
+        else:
+            prediction = self.intercept
+            for i, val in enumerate(self.cache):
+                prediction += val * self.coefficients[i]
 
-    def trade(self, orderManager: OrderManager) -> None:
-        current_position = self.position # should be 0
+        self.cache = [self.cache[1], self.cache[2], self.cache[3], (self.best_ask_price + self.best_buy_price) / 2]
+        logger.print((self.best_ask_price + self.best_buy_price) / 2, prediction)
+        return prediction
+    
+
+    def trade2(self, orderManager: OrderManager) -> None:
+        arbitrage_position = self.position # should be 0
+        export_pnl = 0
+        import_pnl = 0
 
         for ask, vol in self.sell_orders.items():
-            if current_position < self.product_limit and ask < self.adjusted_conversion_bid_price:
+            if arbitrage_position < self.product_limit and ask < self.adjusted_conversion_bid_price:
+                order_volume = min(-vol, self.product_limit - arbitrage_position)
+                arbitrage_position += order_volume
+                orderManager.createOrder(self.symbol, ask, order_volume)
+                # print pnl
+                export_pnl += (self.adjusted_conversion_bid_price - ask) * abs(order_volume)
+        
+        for bid, vol in self.buy_orders.items():
+            if arbitrage_position > -self.product_limit and bid > self.adjusted_conversion_ask_price:
+                order_volume = max(-vol, -self.product_limit - arbitrage_position)
+                arbitrage_position += order_volume
+                orderManager.createOrder(self.symbol, bid, order_volume)
+                # print pnl
+                import_pnl += (bid - self.adjusted_conversion_ask_price) * abs(order_volume)
+        
+        orderManager.orchid_export_pnl += export_pnl
+        orderManager.orchid_import_pnl += import_pnl
+        if (export_pnl > 0) and (import_pnl > 0):
+            logger.print(export_pnl, import_pnl, "Converting: ", arbitrage_position)
+
+        orderManager.createConversion(arbitrage_position)
+
+        return None
+    
+    def trade(self, orderManager: OrderManager) -> None:
+        current_position = self.position
+
+        for ask, vol in self.sell_orders.items():
+            if ((ask <= self.acceptable_bid) or ((self.position < 0) and (ask == self.acceptable_bid + 1))) and current_position < self.product_limit:
                 order_volume = min(-vol, self.product_limit - current_position)
                 current_position += order_volume
                 orderManager.createOrder(self.symbol, ask, order_volume)
-                # print pnl
-                orderManager.orchid_pnl += (self.adjusted_conversion_bid_price - ask) * abs(order_volume)
+
+        bid_price = min(self.best_buy_price + 1, self.acceptable_bid) 
+
+        if current_position < self.product_limit:
+            num = self.product_limit - current_position
+            orderManager.createOrder(self.symbol, bid_price, num)
+            current_position += num
+        
+        current_position = self.position
         
         for bid, vol in self.buy_orders.items():
-            if current_position > -self.product_limit and bid > self.adjusted_conversion_ask_price:
+            if ((bid >= self.acceptable_ask) or ((self.position > 0) and (bid + 1 == self.acceptable_ask))) and current_position > -self.product_limit:
                 order_volume = max(-vol, -self.product_limit - current_position)
                 current_position += order_volume
                 orderManager.createOrder(self.symbol, bid, order_volume)
-                # print pnl
-                orderManager.orchid_pnl += (bid - self.adjusted_conversion_ask_price) * abs(order_volume)
-                
 
-        orderManager.createConversion(current_position)
+        
+        sell_price = max(self.best_ask_price - 1, self.acceptable_ask)
 
+        if current_position > -self.product_limit:
+            num = -self.product_limit - current_position
+            orderManager.createOrder(self.symbol, sell_price, num)
+    
         return None
 
 
@@ -156,8 +222,6 @@ class StarfruitTrader(Traitor):
 
         self.cache = [self.cache[1], self.cache[2], self.cache[3], (self.best_ask_price + self.best_buy_price) / 2]
         logger.print((self.best_ask_price + self.best_buy_price) / 2, prediction)
-        print(self.sell_orders, self.best_ask_price)
-        print(self.buy_orders, self.best_buy_price)
         return prediction
     
 
