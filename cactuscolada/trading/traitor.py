@@ -9,7 +9,15 @@ import jsonpickle
 
 class Trader:
     def __init__(self):
-        self.resource_traders: Dict[Symbol, Traitor] = {"AMETHYSTS": AmethystTrader("AMETHYSTS"), "STARFRUIT": StarfruitTrader("STARFRUIT"), "ORCHIDS": OrchidTrader("ORCHIDS")}
+        self.resource_traders: Dict[Symbol, Traitor] = {
+            # "AMETHYSTS": AmethystTrader("AMETHYSTS"),
+            # "STARFRUIT": StarfruitTrader("STARFRUIT"),
+            # "ORCHIDS": OrchidTrader("ORCHIDS"),
+            "CHOCOLATE": ChocolateTrader("CHOCOLATE"),
+            "STRAWBERRIES": StrawberryTrader("STRAWBERRIES"),
+            "ROSES": RoseTrader("ROSES"),
+            "GIFT_BASKET": GiftTrader("GIFT_BASKET")
+        }
         self.orderManager: OrderManager = OrderManager()
 
     def run(self, state: TradingState):
@@ -56,6 +64,84 @@ class Traitor:
     def process(self, state: TradingState) -> None:
         pass
 
+    def trade(self, orderManager: OrderManager) -> None:
+        pass
+
+
+class GiftItem(Traitor):
+    def __init__(self, symbol: str) -> None:
+        self.symbol = symbol
+        self.product_limit = 0
+        self.position = 0
+        self.sell_orders = None
+        self.buy_orders = None
+        self.best_buy_price = 0
+        self.best_ask_price = 0
+        self.num_items_in_basket = 0
+        self.position = 0
+    
+    def process(self, state: TradingState) -> None:
+        self.position = state.position.get(self.symbol, 0)
+        self.sell_orders = collections.OrderedDict(sorted(state.order_depths[self.symbol].sell_orders.items()))
+        self.buy_orders = collections.OrderedDict(sorted(state.order_depths[self.symbol].buy_orders.items(), reverse=True))
+        self.best_buy_price = next(reversed(self.buy_orders))
+        self.best_ask_price = next(reversed(self.sell_orders))
+    
+    def trade(self, orderManager: OrderManager) -> None:
+        pass
+
+
+class ChocolateTrader(GiftItem):
+    def __init__(self, symbol: str) -> None:
+        super().__init__(symbol)
+        self.product_limit = 250
+        self.num_items_in_basket = 4
+    
+    def process(self, state: TradingState) -> None:
+        super().process(state)
+
+
+class StrawberryTrader(GiftItem):
+    def __init__(self, symbol: str) -> None:
+        super().__init__(symbol)
+        self.product_limit = 350
+        self.num_items_in_basket = 6
+    
+    def process(self, state: TradingState) -> None:
+        super().process(state)
+
+
+class RoseTrader(GiftItem):
+    def __init__(self, symbol: str) -> None:
+        super().__init__(symbol)
+        self.product_limit = 60
+        self.num_items_in_basket = 1
+    
+    def process(self, state: TradingState) -> None:
+        super().process(state)
+
+
+class GiftTrader(Traitor):
+    def __init__(self, symbol: str) -> None:
+        self.symbol = symbol
+        self.product_limit = 60
+        self.position = 0
+        self.sell_orders = None
+        self.buy_orders = None
+        self.best_buy_price = 0
+        self.best_ask_price = 0
+        self.acceptable_bid = 0
+        self.acceptable_ask = 0
+    
+    def process(self, state: TradingState) -> None:
+        self.position = state.position.get(self.symbol, 0)
+        self.sell_orders = collections.OrderedDict(sorted(state.order_depths[self.symbol].sell_orders.items()))
+        self.buy_orders = collections.OrderedDict(sorted(state.order_depths[self.symbol].buy_orders.items(), reverse=True))
+        self.best_buy_price = next(reversed(self.buy_orders))
+        self.best_ask_price = next(reversed(self.sell_orders))
+        self.acceptable_bid = self.best_ask_price - 1
+        self.acceptable_ask = self.best_buy_price + 1
+    
     def trade(self, orderManager: OrderManager) -> None:
         pass
 
