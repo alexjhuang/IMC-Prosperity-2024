@@ -82,3 +82,22 @@ plt.xlabel('Percentage Change')
 plt.ylabel('Frequency')
 plt.legend()
 plt.show()
+
+X = data[['percent_change_chocolate_midprice', 'percent_change_rose_midprice', 'percent_change_strawberry_midprice']]
+y = data['percent_change_basket_midprice']
+
+print(len(X), len(y))
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=21)
+
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+y_pred = model.predict(X_test)
+
+# print metrics
+print("Mean Absolute Error:", mean_absolute_error(y_test, y_pred))
+print("Mean Squared Error:", mean_squared_error(y_test, y_pred))
+print("R^2 Score:", r2_score(y_test, y_pred))
+print("Coefficients:", model.coef_)
+print("Intercept:", model.intercept_)
