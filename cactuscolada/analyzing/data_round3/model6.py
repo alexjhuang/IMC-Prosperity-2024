@@ -29,30 +29,22 @@ for file in files:
         'strawberry_midprice'
     ]
 
-    lag = -1
-    pivoted_data['basket_midprice_shifted'] = pivoted_data['basket_midprice'].shift(lag)
-    pivoted_data['percent_change_basket_midprice_shifted'] = pivoted_data['basket_midprice_shifted'].diff()
 
     for product in ['chocolate', 'rose', 'strawberry', 'basket']:
-        pivoted_data[f'percent_change_{product}_midprice'] = pivoted_data[f'{product}_midprice'].diff()
+        pivoted_data[f'log_change_{product}_midprice'] = np.log(pivoted_data[f'{product}_midprice'] / pivoted_data[f'{product}_midprice'].shift(1))
+    
+    print("product of log changes in basket midprices", np.sum(pivoted_data['log_change_basket_midprice']))
+    print("product of log changes in chocolate midprices", np.sum(pivoted_data['log_change_chocolate_midprice']) + np.sum(pivoted_data['log_change_strawberry_midprice']) + np.sum(pivoted_data['log_change_rose_midprice']))
 
     dataframes.append(pivoted_data)
-
-    print("sum of basket midprice changes", pivoted_data['basket_midprice'].diff(1).sum() / pivoted_data['basket_midprice'].iloc[0])
-    print("sum of chocolate midprice changes", pivoted_data['chocolate_midprice'].diff(1).sum() /    pivoted_data['chocolate_midprice'].iloc[0])
-    print("sum of rose midprice changes", pivoted_data['rose_midprice'].diff(1).sum() / pivoted_data['rose_midprice'].iloc[0])
-    print("sum of strawberry midprice changes", pivoted_data['strawberry_midprice'].diff(1).sum() / pivoted_data['strawberry_midprice'].iloc[0])
-    #   print difference between first basket midprice and last basket midprice for each day
 
 
 data = pd.concat(dataframes, ignore_index=True)
 data.dropna(inplace=True)
 
-correlation_matrix = data[['percent_change_basket_midprice', 'percent_change_chocolate_midprice']].corr()
+correlation_matrix = data[['log_change_basket_midprice', 'log_change_chocolate_midprice']].corr()
 print(correlation_matrix)
 
-correlation_matrix = data[['basket_midprice', 'chocolate_midprice']].corr()
-print(correlation_matrix)
 
 X = data['chocolate_midprice']
 y = data['basket_midprice']
