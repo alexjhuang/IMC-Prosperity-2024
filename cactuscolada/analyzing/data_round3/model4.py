@@ -62,23 +62,23 @@ correlation_matrix = data[['percent_change_basket_midprice',
                            'percent_change_strawberry_midprice']].corr()
 print(correlation_matrix)
 
+# calculate rolling windows for all the products
+new_rolling_names = []
+for product in ['basket', 'chocolate', 'rose', 'strawberry']:
+    data[f'rolling_percent_change_{product}_midprice'] = data[f'percent_change_{product}_midprice'].rolling(window=3).mean()
+    new_rolling_names.append(f'rolling_percent_change_{product}_midprice')
+correlation_matrix = data[new_rolling_names].corr()
+print(correlation_matrix)
+
 print(data['percent_change_basket_midprice'].describe().loc[['min', '25%', '50%', '75%', 'max']])
 print(data['percent_change_chocolate_midprice'].describe().loc[['min', '25%', '50%', '75%', 'max']])
 
 import seaborn as sns
 plt.figure(figsize=(10, 6))
-
-# Overlaying histograms
-sns.histplot(data['percent_change_basket_midprice'], bins=30, kde=True, color='blue', alpha=0.6, label='Basket Midprice % Change')
-sns.histplot(data['percent_change_chocolate_midprice'], bins=30, kde=True, color='red', alpha=0.6, label='Chocolate Midprice % Change')
-
-# Add title and labels
+sns.histplot(data['percent_change_basket_midprice'].rolling(30).mean(), bins=30, kde=True, color='blue', alpha=0.5, label='Basket Midprice % Change')
+sns.histplot(data['percent_change_chocolate_midprice'].rolling(30).mean(), bins=30, kde=True, color='orange', alpha=0.5, label='Chocolate Midprice % Change')
 plt.title('Overlayed Distribution of Percentage Changes')
 plt.xlabel('Percentage Change')
 plt.ylabel('Frequency')
-
-# Add legend to differentiate the distributions
 plt.legend()
-
-# Show the plot
 plt.show()

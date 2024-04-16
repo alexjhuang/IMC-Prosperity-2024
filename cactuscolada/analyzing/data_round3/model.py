@@ -85,7 +85,7 @@ print(correlation_matrix)
 
 # graph the prices across time
 X = data[['percent_change_chocolate_midprice', 'percent_change_rose_midprice', 'percent_change_strawberry_midprice']]
-y = data['percent_change_basket_midprice_shifted']
+y = data['percent_change_basket_midprice']
 
 print(len(X), len(y))
 

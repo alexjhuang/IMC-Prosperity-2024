@@ -13,10 +13,10 @@ class Trader:
             # "AMETHYSTS": AmethystTrader("AMETHYSTS"),
             # "STARFRUIT": StarfruitTrader("STARFRUIT"),
             # "ORCHIDS": OrchidTrader("ORCHIDS"),
+            "GIFT_BASKET": GiftTrader("GIFT_BASKET"),
             "CHOCOLATE": ChocolateTrader("CHOCOLATE"),
             "STRAWBERRIES": StrawberryTrader("STRAWBERRIES"),
             "ROSES": RoseTrader("ROSES"),
-            "GIFT_BASKET": GiftTrader("GIFT_BASKET")
         }
         self.orderManager: OrderManager = OrderManager()
 
@@ -79,6 +79,7 @@ class GiftItem(Traitor):
         self.best_ask_price = 0
         self.num_items_in_basket = 0
         self.position = 0
+        self.base_position = 0
     
     def process(self, state: TradingState) -> None:
         self.position = state.position.get(self.symbol, 0)
@@ -86,6 +87,8 @@ class GiftItem(Traitor):
         self.buy_orders = collections.OrderedDict(sorted(state.order_depths[self.symbol].buy_orders.items(), reverse=True))
         self.best_buy_price = next(reversed(self.buy_orders))
         self.best_ask_price = next(reversed(self.sell_orders))
+        basket_position = state.position.get("GIFT_BASKET", 0)
+        self.base_position = basket_position * self.num_items_in_basket
     
     def trade(self, orderManager: OrderManager) -> None:
         pass
@@ -146,9 +149,7 @@ class GiftTrader(Traitor):
         self.acceptable_ask = self.best_buy_price + 1
     
     def trade(self, orderManager: OrderManager) -> None:
-        for overprice in range(self.best_ask_price + 1000, self.best_ask_price + 1008):
-            orderManager.createOrder(self.symbol, overprice, -4)
-        orderManager.createOrder(self.symbol, self.best_buy_price, self.product_limit - self.position)
+        pass
 
 
 class OrchidTrader(Traitor):
