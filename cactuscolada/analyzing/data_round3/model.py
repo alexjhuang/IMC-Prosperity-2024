@@ -41,6 +41,20 @@ for file in files:
 data = pd.concat(dataframes, ignore_index=True)
 data.dropna(inplace=True)
 
+data['combined_midprice'] = (4 * data['chocolate_midprice']) + data['rose_midprice'] + (6 * data['strawberry_midprice'])
+
+plt.figure(figsize=(14, 8))
+plt.plot(data[['basket_midprice']], label='basket')
+# plt.plot(data[['rose_midprice']], label='rose')
+# plt.plot(data[['chocolate_midprice']], label='chocolate')
+# plt.plot(data[['strawberry_midprice']], label='strawberry')
+plt.plot(data[['combined_midprice']], label='parts combined')
+plt.title('Gift Basket Midprice and Product Midprice Changes')
+plt.xlabel('Index')
+plt.ylabel('Mid_price')
+plt.legend()
+plt.show()
+
 # shift basket_midprice by a few indices
 #lag = -1000
 #pivoted_data['basket_midprice_shifted'] = pivoted_data['basket_midprice'].shift(lag)

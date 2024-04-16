@@ -10,9 +10,9 @@ import jsonpickle
 class Trader:
     def __init__(self):
         self.resource_traders: Dict[Symbol, Traitor] = {
-            # "AMETHYSTS": AmethystTrader("AMETHYSTS"),
-            # "STARFRUIT": StarfruitTrader("STARFRUIT"),
-            # "ORCHIDS": OrchidTrader("ORCHIDS"),
+            "AMETHYSTS": AmethystTrader("AMETHYSTS"),
+            "STARFRUIT": StarfruitTrader("STARFRUIT"),
+            "ORCHIDS": OrchidTrader("ORCHIDS"),
             "CHOCOLATE": ChocolateTrader("CHOCOLATE"),
             "STRAWBERRIES": StrawberryTrader("STRAWBERRIES"),
             "ROSES": RoseTrader("ROSES"),
@@ -109,7 +109,10 @@ class StrawberryTrader(GiftItem):
     
     def process(self, state: TradingState) -> None:
         super().process(state)
-
+    
+    def trade(self, orderManager: OrderManager) -> None:
+        pass
+        
 
 class RoseTrader(GiftItem):
     def __init__(self, symbol: str) -> None:
@@ -143,7 +146,10 @@ class GiftTrader(Traitor):
         self.acceptable_ask = self.best_buy_price + 1
     
     def trade(self, orderManager: OrderManager) -> None:
-        pass
+        for huge_price in range(self.best_ask_price + 2, self.best_ask_price + 10):
+            orderManager.createOrder(self.symbol, huge_price, 5)
+        
+        orderManager.createOrder(self.symbol, self.best_buy_price, 1)
 
 
 class OrchidTrader(Traitor):
@@ -203,7 +209,7 @@ class OrchidTrader(Traitor):
                 prediction += val * self.coefficients[i]
 
         self.cache = [self.cache[1], self.cache[2], self.cache[3], (self.bidPrice + self.askPrice) / 2]
-        logger.print((self.bidPrice + self.askPrice) / 2, self.cache[2])
+        # logger.print((self.bidPrice + self.askPrice) / 2, self.cache[2])
         return prediction
     
 
@@ -218,7 +224,7 @@ class OrchidTrader(Traitor):
         
         for bid, vol in self.buy_orders.items():
             if arbitrage_position > -self.product_limit and bid > self.adjusted_conversion_ask_price:
-                logger.print(self.humidity, self.adjusted_conversion_ask_price, bid)
+                # logger.print(self.humidity, self.adjusted_conversion_ask_price, bid)
                 order_volume = max(-vol, -self.product_limit - arbitrage_position)
                 arbitrage_position += order_volume
                 orderManager.createOrder(self.symbol, bid, order_volume)
@@ -294,7 +300,7 @@ class StarfruitTrader(Traitor):
                 prediction += val * self.coefficients[i]
 
         self.cache = [self.cache[1], self.cache[2], self.cache[3], (self.best_ask_price + self.best_buy_price) / 2]
-        logger.print((self.best_ask_price + self.best_buy_price) / 2, prediction)
+        logger.print(len(self.cache))
         return prediction
     
 
