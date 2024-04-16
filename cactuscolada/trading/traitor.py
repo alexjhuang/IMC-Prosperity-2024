@@ -10,9 +10,9 @@ import jsonpickle
 class Trader:
     def __init__(self):
         self.resource_traders: Dict[Symbol, Traitor] = {
-            "AMETHYSTS": AmethystTrader("AMETHYSTS"),
-            "STARFRUIT": StarfruitTrader("STARFRUIT"),
-            "ORCHIDS": OrchidTrader("ORCHIDS"),
+            # "AMETHYSTS": AmethystTrader("AMETHYSTS"),
+            # "STARFRUIT": StarfruitTrader("STARFRUIT"),
+            # "ORCHIDS": OrchidTrader("ORCHIDS"),
             "CHOCOLATE": ChocolateTrader("CHOCOLATE"),
             "STRAWBERRIES": StrawberryTrader("STRAWBERRIES"),
             "ROSES": RoseTrader("ROSES"),
@@ -146,10 +146,9 @@ class GiftTrader(Traitor):
         self.acceptable_ask = self.best_buy_price + 1
     
     def trade(self, orderManager: OrderManager) -> None:
-        for huge_price in range(self.best_ask_price + 2, self.best_ask_price + 10):
-            orderManager.createOrder(self.symbol, huge_price, 5)
-        
-        orderManager.createOrder(self.symbol, self.best_buy_price, 1)
+        for overprice in range(self.best_ask_price + 1000, self.best_ask_price + 1008):
+            orderManager.createOrder(self.symbol, overprice, -4)
+        orderManager.createOrder(self.symbol, self.best_buy_price, self.product_limit - self.position)
 
 
 class OrchidTrader(Traitor):
@@ -300,7 +299,6 @@ class StarfruitTrader(Traitor):
                 prediction += val * self.coefficients[i]
 
         self.cache = [self.cache[1], self.cache[2], self.cache[3], (self.best_ask_price + self.best_buy_price) / 2]
-        logger.print(len(self.cache))
         return prediction
     
 
