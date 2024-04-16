@@ -31,12 +31,17 @@ for file in files:
 
     lag = -1
     pivoted_data['basket_midprice_shifted'] = pivoted_data['basket_midprice'].shift(lag)
-    pivoted_data['percent_change_basket_midprice_shifted'] = pivoted_data['basket_midprice_shifted'].pct_change()
+    pivoted_data['percent_change_basket_midprice_shifted'] = pivoted_data['basket_midprice_shifted'].diff()
 
     for product in ['chocolate', 'rose', 'strawberry', 'basket']:
-        pivoted_data[f'percent_change_{product}_midprice'] = pivoted_data[f'{product}_midprice'].pct_change()
+        pivoted_data[f'percent_change_{product}_midprice'] = pivoted_data[f'{product}_midprice'].diff()
 
     dataframes.append(pivoted_data)
+    #   print difference between first basket midprice and last basket midprice for each day
+    print("basket change", pivoted_data['basket_midprice'].iloc[0] - pivoted_data['basket_midprice'].iloc[-1] / pivoted_data['basket_midprice'].iloc[0])
+    # do the same for chocolate
+    print("chocolate change", pivoted_data['chocolate_midprice'].iloc[0] - pivoted_data['chocolate_midprice'].iloc[-1] / pivoted_data['chocolate_midprice'].iloc[0])
+
 
 data = pd.concat(dataframes, ignore_index=True)
 data.dropna(inplace=True)
@@ -51,6 +56,9 @@ plt.xlabel('Index')
 plt.ylabel('Mid_price')
 plt.legend()
 plt.show()
+
+correlation_matrix = data[['basket_midprice', 'combined_midprice']].corr()
+print(correlation_matrix)
 
 # get the correlations between variables
 correlation_matrix = data[['basket_midprice', 'chocolate_midprice', 'rose_midprice', 'strawberry_midprice']].corr()
@@ -67,12 +75,8 @@ print(data['percent_change_chocolate_midprice'].describe().loc[['min', '25%', '5
 
 import seaborn as sns
 plt.figure(figsize=(10, 6))
-
-# Overlaying histograms
 sns.histplot(data['percent_change_basket_midprice'], bins=30, kde=True, color='blue', alpha=0.6, label='Basket Midprice % Change')
-sns.histplot(data['percent_change_chocolate_midprice'], bins=30, kde=True, color='red', alpha=0.6, label='Chocolate Midprice % Change')
-
-# Add title and labels
+sns.histplot(data['percent_change_chocolate_midprice'] * 4, bins=30, kde=True, color='red', alpha=0.6, label='Chocolate Midprice % Change')
 plt.title('Overlayed Distribution of Percentage Changes')
 plt.xlabel('Percentage Change')
 plt.ylabel('Frequency')
