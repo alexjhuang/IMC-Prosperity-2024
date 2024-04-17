@@ -172,7 +172,7 @@ class ChocolateTrader(GiftItem):
         current_position = self.position
 
         for ask, vol in self.sell_orders.items():
-            if (ask < expected_chocolate_price - 6) and current_position < self.product_limit:
+            if (ask < expected_chocolate_price - 7) and current_position < self.product_limit:
                 order_volume = min(-vol, self.product_limit - current_position)
                 current_position += order_volume
                 orderManager.createOrder(self.symbol, ask, order_volume)
@@ -180,7 +180,7 @@ class ChocolateTrader(GiftItem):
         current_position = self.position
         
         for bid, vol in self.buy_orders.items():
-            if (bid > expected_chocolate_price + 6) and current_position > -self.product_limit:
+            if (bid > expected_chocolate_price + 7) and current_position > -self.product_limit:
                 order_volume = max(-vol, -self.product_limit - current_position)
                 current_position += order_volume
                 orderManager.createOrder(self.symbol, bid, order_volume)
@@ -221,7 +221,29 @@ class GiftTrader(GiftItem):
         super().process(state)
     
     def trade(self, orderManager: OrderManager) -> None:
-        orderManager.createOrder(self.symbol, self.best_ask_price, 0)
+        chocolate_deviation = self.chocolate_deviation
+        strawberry_deviation = self.strawberry_deviation
+        rose_deviation = self.rose_deviation
+        basket_deviation = self.basket_deviation
+
+        expected_basket_deviation = (0.45610365 * chocolate_deviation) + (0.32678862 * strawberry_deviation) + (0.18270502 * rose_deviation) - 0.00043099352457925955
+        expected_basket_price = self.start_basket_price * np.exp(expected_basket_deviation)
+        
+        current_position = self.position
+
+        for ask, vol in self.sell_orders.items():
+            if (ask < expected_basket_price) and current_position < self.product_limit:
+                order_volume = min(-vol, self.product_limit - current_position)
+                current_position += order_volume
+                orderManager.createOrder(self.symbol, ask, order_volume)
+        
+        current_position = self.position
+        
+        for bid, vol in self.buy_orders.items():
+            if (bid > expected_basket_price) and current_position > -self.product_limit:
+                order_volume = max(-vol, -self.product_limit - current_position)
+                current_position += order_volume
+                orderManager.createOrder(self.symbol, bid, order_volume)
 
 
 class OrchidTrader(Traitor):

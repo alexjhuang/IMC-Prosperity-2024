@@ -55,8 +55,8 @@ print(correlation_matrix)
 correlation_matrix = data[['log_change_basket_midprice', 'log_change_chocolate_midprice', 'log_change_strawberry_midprice', 'log_change_rose_midprice']].corr()
 print(correlation_matrix)
 
-X = data[['log_change_basket_midprice', 'log_change_strawberry_midprice', 'log_change_rose_midprice']]
-y = data['log_change_chocolate_midprice']
+X = data[['log_change_chocolate_midprice', 'log_change_strawberry_midprice', 'log_change_rose_midprice']]
+y = data['log_change_basket_midprice']
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
@@ -72,3 +72,11 @@ print("MSE:", mse)
 print("R2:", r2)
 print("model coefficients:", model.coef_)
 print("model intercept:", model.intercept_)
+
+
+plt.figure(figsize=(10, 7))
+plt.plot(data['log_change_chocolate_midprice'], label='chocolate', color='orange')
+plt.plot(data['log_change_basket_midprice'], label='basket')
+plt.yscale('linear')
+plt.xscale('linear')
+plt.show()
