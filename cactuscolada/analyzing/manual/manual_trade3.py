@@ -4,6 +4,7 @@ from collections import defaultdict
 class Cell:
     def __init__(self, hunters, value) -> None:
         self.hunters = hunters
+        self.flat_value = value
         self.value = value * 7500
         self.percentage_agents = 0
         self.probability = 1
@@ -14,12 +15,10 @@ class Cell:
     
     def getIntelligentValue(self):
         return self.value / (self.hunters + self.percentage_agents)
-
-    def updateAgents(self, percentage_agents):
-        self.percentage_agents = percentage_agents
     
-    def process(self):
+    def process(self, times_chosen, n):
         # update cell's probability based on it's value
+        self.percentage_agents = (times_chosen / n) * 100
         self.probability = self.getValue()
         self.intelligent_probability = self.getIntelligentValue()
 
@@ -35,11 +34,14 @@ class Agent:
         
 class IntelligentAgent(Agent):
     def chooseCell(self, cells):
+        # k = 2 if no cells above intelligent value 75000
+        if all(cell.getIntelligentValue() < 75000 for cell in cells):
+            return random.choices(cells, weights=[cell.intelligent_probability for cell in cells], k=2)
         # randomly choose three cells based off of their probability attribute
         return random.choices(cells, weights=[cell.intelligent_probability for cell in cells], k=3)
     
 
-
+cycles = 100
 # create 5000 agents and 5000 intelligent agents each with a radom seed
 dumb_agents = [Agent(random.randint(1, 5000)) for i in range(5000)]
 intelligent_agents = [IntelligentAgent(random.randint(1, 5000)) for i in range(5000)]
@@ -75,15 +77,21 @@ cells = [
     Cell(3, 30)
          ]
 
-all_choices = defaultdict(int) # {cell: number of times chosen
-for agent in agents:
-    choices = agent.chooseCell(cells)
-    for choice in choices:
-        if choice in all_choices:
+for i in range(cycles):
+    all_choices = defaultdict(int) # {cell: number of times chosen
+    for agent in agents:
+        choices = agent.chooseCell(cells)
+        for choice in choices:
             all_choices[choice] += 1
-        else:
-            all_choices[choice] = 1
 
-#update cells
-for cell in cells:
-    cell.process()
+    #update cells
+    for cell in cells:
+        cell.process(all_choices[cell], len(agents))
+
+
+# sort the cells by the highest intelligent values
+cells.sort(key=lambda x: x.intelligent_probability, reverse=True)
+for i in range(5):
+    print("CELL ID", cells[i].flat_value, cells[i].hunters)
+    print(cells[i].percentage_agents)
+    print(cells[i].getIntelligentValue())
