@@ -150,23 +150,22 @@ class ChocolateTrader(GiftItem):
         basket_deviation = self.basket_deviation
 
         expected_chocolate_deviation = (basket_deviation - (0.24704658 * strawberry_deviation) - (0.20129926 * rose_deviation) + -2.9225094501384473e-08) / 0.42792465
+
+        buy_threshold =   0.00000001
+        sell_threshold = -0.00000001
+
         deviation = chocolate_deviation - expected_chocolate_deviation
-
-        buy_threshold =   -0.000001
-        sell_threshold = 0.000001
-
-        logger.print(deviation)
-        predicted_price = self.previous_chocolate_price * np.exp(-deviation)
+            
+        if deviation < buy_threshold and self.position > -self.product_limit:
+            # If the product is undervalued, place a buy order
+            price = next(iter(self.buy_orders))  # Slightly better than the current best buy'
+            max_order_volume = min(self.buy_orders[price], -self.product_limit + self.position)
+            orderManager.createOrder(self.symbol, price, max_order_volume)
         
-        for ask, vol in self.sell_orders.items():
-            if predicted_price < ask and self.position < self.product_limit:
-                order_volume = min(-vol, self.product_limit - self.position)
-                orderManager.createOrder(self.symbol, ask, order_volume)
-        
-        for bid, vol in self.buy_orders.items():
-            if predicted_price > bid and self.position > -self.product_limit:
-                order_volume = max(-vol, -self.product_limit - self.position)
-                orderManager.createOrder(self.symbol, bid, order_volume)
+        if deviation > sell_threshold and self.position < self.product_limit:
+            price = next(iter(self.sell_orders))  # Slightly worse than the current best ask
+            max_order_volume = min(self.sell_orders[price], self.product_limit - self.position)
+            orderManager.createOrder(self.symbol, price, -max_order_volume)
 
 
 class StrawberryTrader(GiftItem):
