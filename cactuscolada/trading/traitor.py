@@ -138,9 +138,27 @@ class GiftItem(Traitor):
                 self.basket_deviation = np.log(mid_price / self.start_basket_price)
                 #self.previous_basket_price = mid_price
 
+    def expected_price(self):
+        pass
 
     def trade(self, orderManager: OrderManager) -> None:
-        pass
+        expected_price = self.expected_price()
+
+        current_position = self.position
+
+        for ask, vol in self.sell_orders.items():
+            if (ask < expected_price) and current_position < self.product_limit:
+                order_volume = min(-vol, self.product_limit - current_position)
+                current_position += order_volume
+                orderManager.createOrder(self.symbol, ask, order_volume)
+        
+        current_position = self.position
+        
+        for bid, vol in self.buy_orders.items():
+            if (bid > expected_price) and current_position > -self.product_limit:
+                order_volume = max(-vol, -self.product_limit - current_position)
+                current_position += order_volume
+                orderManager.createOrder(self.symbol, bid, order_volume)
 
 
 class ChocolateTrader(GiftItem):
@@ -151,39 +169,14 @@ class ChocolateTrader(GiftItem):
     
     def process(self, state: TradingState) -> None:
         super().process(state)
+
+    def expected_price(self):
+        expected_chocolate_deviation = (1.90804964 * self.basket_deviation) + (-0.57008893 * self.strawberry_deviation) + (-0.38161253 * self.rose_deviation) - 0.0002940641867402241
+        expected_chocolate_price = self.start_chocolate_price * np.exp(expected_chocolate_deviation)
+        return expected_chocolate_price
     
     def trade(self, orderManager: OrderManager) -> None:
-        # Calculated deviations or some logic to determine these before calling this function
-        chocolate_deviation = self.chocolate_deviation
-        strawberry_deviation = self.strawberry_deviation
-        rose_deviation = self.rose_deviation
-        basket_deviation = self.basket_deviation
-
-        expected_chocolate_deviation = (1.90804964 * basket_deviation) + (-0.57008893 * strawberry_deviation) + (-0.38161253 * rose_deviation) - 0.0002940641867402241
-        expected_chocolate_price = self.start_chocolate_price * np.exp(expected_chocolate_deviation)
-        logger.print("start_chocolate_price", self.start_chocolate_price)
-        logger.print("chocolate_deviation", chocolate_deviation)
-        logger.print("strawberry_deviation", strawberry_deviation)
-        logger.print("rose_deviation", rose_deviation)
-        logger.print("basket_deviation", basket_deviation)
-        logger.print("expected_chocolate_deviation", expected_chocolate_deviation)
-        logger.print("expected_chocolate_price", expected_chocolate_price)
-        
-        current_position = self.position
-
-        for ask, vol in self.sell_orders.items():
-            if (ask < expected_chocolate_price - 7) and current_position < self.product_limit:
-                order_volume = min(-vol, self.product_limit - current_position)
-                current_position += order_volume
-                orderManager.createOrder(self.symbol, ask, order_volume)
-        
-        current_position = self.position
-        
-        for bid, vol in self.buy_orders.items():
-            if (bid > expected_chocolate_price + 7) and current_position > -self.product_limit:
-                order_volume = max(-vol, -self.product_limit - current_position)
-                current_position += order_volume
-                orderManager.createOrder(self.symbol, bid, order_volume)
+        super().trade(orderManager)
 
 
 class StrawberryTrader(GiftItem):
@@ -194,9 +187,14 @@ class StrawberryTrader(GiftItem):
     
     def process(self, state: TradingState) -> None:
         super().process(state)
+
+    def expected_price(self):
+        expected_strawberry_deviation = (-1.01644375 * self.chocolate_deviation) + (-1.29602731 * self.rose_deviation) + (2.43743794 * self.basket_deviation) + 0.0018273749461782483
+        expected_strawberry_price = self.start_strawberry_price * np.exp(expected_strawberry_deviation)
+        return expected_strawberry_price
     
     def trade(self, orderManager: OrderManager) -> None:
-        orderManager.createOrder(self.symbol, self.best_ask_price, 0)
+        super().trade(orderManager)
         
 
 class RoseTrader(GiftItem):
@@ -207,9 +205,19 @@ class RoseTrader(GiftItem):
     
     def process(self, state: TradingState) -> None:
         super().process(state)
+    
+    def expected_price(self):
+        chocolate_deviation = self.chocolate_deviation
+        strawberry_deviation = self.strawberry_deviation
+        rose_deviation = self.rose_deviation
+        basket_deviation = self.basket_deviation
+
+        expected_rose_deviation = (3.98579962 * basket_deviation) + (-1.29602731 * strawberry_deviation) + (-1.99003957 * chocolate_deviation) - 0.0019972956749151373
+        expected_rose_price = self.start_rose_price * np.exp(expected_rose_deviation)
+        return expected_rose_price
 
     def trade(self, orderManager: OrderManager) -> None:
-        orderManager.createOrder(self.symbol, self.best_ask_price, 0)
+        super().trade(orderManager)
 
 
 class GiftTrader(GiftItem):
@@ -219,31 +227,14 @@ class GiftTrader(GiftItem):
     
     def process(self, state: TradingState) -> None:
         super().process(state)
-    
-    def trade(self, orderManager: OrderManager) -> None:
-        chocolate_deviation = self.chocolate_deviation
-        strawberry_deviation = self.strawberry_deviation
-        rose_deviation = self.rose_deviation
-        basket_deviation = self.basket_deviation
 
-        expected_basket_deviation = (0.45610365 * chocolate_deviation) + (0.32678862 * strawberry_deviation) + (0.18270502 * rose_deviation) - 0.00043099352457925955
+    def expected_price(self):
+        expected_basket_deviation = (0.45610365 * self.chocolate_deviation) + (0.32678862 * self.strawberry_deviation) + (0.18270502 * self.rose_deviation) - 0.00043099352457925955
         expected_basket_price = self.start_basket_price * np.exp(expected_basket_deviation)
-        
-        current_position = self.position
+        return expected_basket_price
 
-        for ask, vol in self.sell_orders.items():
-            if (ask < expected_basket_price) and current_position < self.product_limit:
-                order_volume = min(-vol, self.product_limit - current_position)
-                current_position += order_volume
-                orderManager.createOrder(self.symbol, ask, order_volume)
-        
-        current_position = self.position
-        
-        for bid, vol in self.buy_orders.items():
-            if (bid > expected_basket_price) and current_position > -self.product_limit:
-                order_volume = max(-vol, -self.product_limit - current_position)
-                current_position += order_volume
-                orderManager.createOrder(self.symbol, bid, order_volume)
+    def trade(self, orderManager: OrderManager) -> None:
+        super().trade(orderManager)
 
 
 class OrchidTrader(Traitor):
