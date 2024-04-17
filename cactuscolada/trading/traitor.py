@@ -190,7 +190,7 @@ class StrawberryTrader(GiftItem):
 
     def expected_price(self):
         expected_strawberry_deviation = (-1.01644375 * self.chocolate_deviation) + (-1.29602731 * self.rose_deviation) + (2.43743794 * self.basket_deviation) + 0.0018273749461782483
-        expected_strawberry_price = self.start_strawberry_price * np.exp(expected_strawberry_deviation) / self.num_items_in_basket
+        expected_strawberry_price = self.start_strawberry_price * np.exp(expected_strawberry_deviation) / (self.num_items_in_basket)
         return expected_strawberry_price
     
     def trade(self, orderManager: OrderManager) -> None:
