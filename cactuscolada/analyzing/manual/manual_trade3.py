@@ -41,7 +41,7 @@ class IntelligentAgent(Agent):
         return random.choices(cells, weights=[cell.intelligent_probability for cell in cells], k=3)
     
 
-cycles = 100
+cycles = 5
 # create 5000 agents and 5000 intelligent agents each with a radom seed
 dumb_agents = [Agent(random.randint(1, 5000)) for i in range(5000)]
 intelligent_agents = [IntelligentAgent(random.randint(1, 5000)) for i in range(5000)]

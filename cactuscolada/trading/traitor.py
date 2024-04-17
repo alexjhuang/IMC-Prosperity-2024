@@ -80,6 +80,10 @@ class GiftItem(Traitor):
         self.best_ask_price = 0
         self.num_items_in_basket = 0
         self.position = 0
+        self.start_basket_price = None
+        self.start_chocolate_price = None
+        self.start_strawberry_price = None
+        self.start_rose_price = None
         self.previous_basket_price = 0
         self.previous_chocolate_price = 0
         self.previous_strawberry_price = 0
@@ -104,29 +108,35 @@ class GiftItem(Traitor):
         self.buy_orders = collections.OrderedDict(sorted(state.order_depths[self.symbol].buy_orders.items(), reverse=True))
         self.best_buy_price = next(reversed(self.buy_orders))
         self.best_ask_price = next(reversed(self.sell_orders))
+
+        if self.start_basket_price is None:
+            self.start_basket_price = self.get_mid_price(state, "GIFT_BASKET")
+            self.start_chocolate_price = self.get_mid_price(state, "CHOCOLATE")
+            self.start_strawberry_price = self.get_mid_price(state, "STRAWBERRIES")
+            self.start_rose_price = self.get_mid_price(state, "ROSES")
         
         for symbol in state.order_depths.keys():
             mid_price = self.get_mid_price(state, symbol)
             if symbol == "CHOCOLATE":
-                if self.previous_chocolate_price == 0:
-                    self.previous_chocolate_price = mid_price
-                self.chocolate_deviation = np.log(mid_price / self.previous_chocolate_price)
-                self.previous_chocolate_price = mid_price
+                # if self.previous_chocolate_price == 0:
+                #     self.previous_chocolate_price = mid_price
+                self.chocolate_deviation = np.log(mid_price / self.start_chocolate_price)
+                #self.previous_chocolate_price = mid_price
             elif symbol == "STRAWBERRIES":
-                if self.previous_strawberry_price == 0:
-                    self.previous_strawberry_price = mid_price
-                self.strawberry_deviation = np.log(mid_price / self.previous_strawberry_price)
-                self.previous_strawberry_price = mid_price
+                # if self.previous_strawberry_price == 0:
+                #     self.previous_strawberry_price = mid_price
+                self.strawberry_deviation = np.log(mid_price / self.start_strawberry_price)
+                #self.previous_strawberry_price = mid_price
             elif symbol == "ROSES":
-                if self.previous_rose_price == 0:
-                    self.previous_rose_price = mid_price
-                self.rose_deviation = np.log(mid_price / self.previous_rose_price)
-                self.previous_rose_price = mid_price
+                # if self.previous_rose_price == 0:
+                #     self.previous_rose_price = mid_price
+                self.rose_deviation = np.log(mid_price / self.start_rose_price)
+                #self.previous_rose_price = mid_price
             elif symbol == "GIFT_BASKET":
-                if self.previous_basket_price == 0:
-                    self.previous_basket_price = mid_price
-                self.basket_deviation = np.log(mid_price / self.previous_basket_price)
-                self.previous_basket_price = mid_price
+                # if self.previous_basket_price == 0:
+                #     self.previous_basket_price = mid_price
+                self.basket_deviation = np.log(mid_price / self.start_basket_price)
+                #self.previous_basket_price = mid_price
 
 
     def trade(self, orderManager: OrderManager) -> None:
@@ -149,23 +159,31 @@ class ChocolateTrader(GiftItem):
         rose_deviation = self.rose_deviation
         basket_deviation = self.basket_deviation
 
-        expected_chocolate_deviation = (basket_deviation - (0.24704658 * strawberry_deviation) - (0.20129926 * rose_deviation) + -2.9225094501384473e-08) / 0.42792465
-
-        buy_threshold =   0.00000001
-        sell_threshold = -0.00000001
-
-        deviation = chocolate_deviation - expected_chocolate_deviation
-            
-        if deviation < buy_threshold and self.position > -self.product_limit:
-            # If the product is undervalued, place a buy order
-            price = next(iter(self.buy_orders))  # Slightly better than the current best buy'
-            max_order_volume = min(self.buy_orders[price], -self.product_limit + self.position)
-            orderManager.createOrder(self.symbol, price, max_order_volume)
+        expected_chocolate_deviation = (1.90804964 * basket_deviation) + (-0.57008893 * strawberry_deviation) + (-0.38161253 * rose_deviation) - 0.0002940641867402241
+        expected_chocolate_price = self.start_chocolate_price * np.exp(expected_chocolate_deviation)
+        logger.print("start_chocolate_price", self.start_chocolate_price)
+        logger.print("chocolate_deviation", chocolate_deviation)
+        logger.print("strawberry_deviation", strawberry_deviation)
+        logger.print("rose_deviation", rose_deviation)
+        logger.print("basket_deviation", basket_deviation)
+        logger.print("expected_chocolate_deviation", expected_chocolate_deviation)
+        logger.print("expected_chocolate_price", expected_chocolate_price)
         
-        if deviation > sell_threshold and self.position < self.product_limit:
-            price = next(iter(self.sell_orders))  # Slightly worse than the current best ask
-            max_order_volume = min(self.sell_orders[price], self.product_limit - self.position)
-            orderManager.createOrder(self.symbol, price, -max_order_volume)
+        current_position = self.position
+
+        for ask, vol in self.sell_orders.items():
+            if (ask < expected_chocolate_price - 6) and current_position < self.product_limit:
+                order_volume = min(-vol, self.product_limit - current_position)
+                current_position += order_volume
+                orderManager.createOrder(self.symbol, ask, order_volume)
+        
+        current_position = self.position
+        
+        for bid, vol in self.buy_orders.items():
+            if (bid > expected_chocolate_price + 6) and current_position > -self.product_limit:
+                order_volume = max(-vol, -self.product_limit - current_position)
+                current_position += order_volume
+                orderManager.createOrder(self.symbol, bid, order_volume)
 
 
 class StrawberryTrader(GiftItem):

@@ -55,9 +55,8 @@ print(correlation_matrix)
 correlation_matrix = data[['log_change_basket_midprice', 'log_change_chocolate_midprice', 'log_change_strawberry_midprice', 'log_change_rose_midprice']].corr()
 print(correlation_matrix)
 
-
-X = data[['log_change_chocolate_midprice', 'log_change_strawberry_midprice', 'log_change_rose_midprice']]
-y = data['log_change_basket_midprice']
+X = data[['log_change_basket_midprice', 'log_change_strawberry_midprice', 'log_change_rose_midprice']]
+y = data['log_change_chocolate_midprice']
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
