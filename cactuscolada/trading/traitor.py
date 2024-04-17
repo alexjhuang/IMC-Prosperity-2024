@@ -172,7 +172,7 @@ class ChocolateTrader(GiftItem):
 
     def expected_price(self):
         expected_chocolate_deviation = (1.90804964 * self.basket_deviation) + (-0.57008893 * self.strawberry_deviation) + (-0.38161253 * self.rose_deviation) - 0.0002940641867402241
-        expected_chocolate_price = self.start_chocolate_price * np.exp(expected_chocolate_deviation)
+        expected_chocolate_price = self.start_chocolate_price * np.exp(expected_chocolate_deviation) / self.num_items_in_basket
         return expected_chocolate_price
     
     def trade(self, orderManager: OrderManager) -> None:
@@ -190,7 +190,7 @@ class StrawberryTrader(GiftItem):
 
     def expected_price(self):
         expected_strawberry_deviation = (-1.01644375 * self.chocolate_deviation) + (-1.29602731 * self.rose_deviation) + (2.43743794 * self.basket_deviation) + 0.0018273749461782483
-        expected_strawberry_price = self.start_strawberry_price * np.exp(expected_strawberry_deviation)
+        expected_strawberry_price = self.start_strawberry_price * np.exp(expected_strawberry_deviation) / self.num_items_in_basket
         return expected_strawberry_price
     
     def trade(self, orderManager: OrderManager) -> None:
@@ -207,13 +207,8 @@ class RoseTrader(GiftItem):
         super().process(state)
     
     def expected_price(self):
-        chocolate_deviation = self.chocolate_deviation
-        strawberry_deviation = self.strawberry_deviation
-        rose_deviation = self.rose_deviation
-        basket_deviation = self.basket_deviation
-
-        expected_rose_deviation = (3.98579962 * basket_deviation) + (-1.29602731 * strawberry_deviation) + (-1.99003957 * chocolate_deviation) - 0.0019972956749151373
-        expected_rose_price = self.start_rose_price * np.exp(expected_rose_deviation)
+        expected_rose_deviation = (3.98579962 * self.basket_deviation) + (-1.29602731 * self.strawberry_deviation) + (-1.99003957 * self.chocolate_deviation) - 0.0019972956749151373
+        expected_rose_price = self.start_rose_price * np.exp(expected_rose_deviation) / 2
         return expected_rose_price
 
     def trade(self, orderManager: OrderManager) -> None:
