@@ -29,14 +29,47 @@ for file in files:
         'strawberry_midprice'
     ]
 
-    data['combined_midprice'] = (4 * data['chocolate_midprice']) + data['rose_midprice'] + (6 * data['strawberry_midprice'])
-    for product in ['chocolate', 'rose', 'strawberry', 'basket']:
-        pivoted_data[f'percent_change_{product}_midprice'] = pivoted_data[f'{product}_midprice'].diff()
+    pivoted_data['combined_midprice'] = (4 * pivoted_data['chocolate_midprice']) + pivoted_data['rose_midprice'] + (6 * pivoted_data['strawberry_midprice'])
+    for product in ['chocolate', 'rose', 'strawberry', 'basket', 'combined']:
+        pivoted_data[f'change_{product}_midprice'] = pivoted_data[f'{product}_midprice'].diff()
+    
+    for product in ['chocolate', 'rose', 'strawberry', 'basket', 'combined']:
+        pivoted_data[f'log_change_{product}_midprice'] = np.log(pivoted_data[f'{product}_midprice'] / pivoted_data[f'{product}_midprice'].iloc[0])
+        # pivoted_data[f'log_change_{product}_midprice'] = np.log(pivoted_data[f'{product}_midprice'] / pivoted_data[f'{product}_midprice'].shift(1))
+
+    # print basket total log change
+    # print("basket total log change", np.log(pivoted_data['basket_midprice'].iloc[-1] / pivoted_data['basket_midprice'].iloc[0]))
+    # print("combined total log change", np.log(pivoted_data['combined_midprice'].iloc[-1] / pivoted_data['combined_midprice'].iloc[0]))
 
     dataframes.append(pivoted_data)
 
 data = pd.concat(dataframes, ignore_index=True)
 data.dropna(inplace=True)
 
+# print("basket total log change", np.log(data['basket_midprice'].iloc[-1] / data['basket_midprice'].iloc[0]))
+# print("combined total log change", np.log(data['combined_midprice'].iloc[-1] / data['combined_midprice'].iloc[0]))
+
+correlation_matrix = data[['log_change_basket_midprice', 'log_change_combined_midprice']].corr()
+print(correlation_matrix)
+
+correlation_matrix = data[['log_change_basket_midprice', 'log_change_chocolate_midprice', 'log_change_strawberry_midprice', 'log_change_rose_midprice']].corr()
+print(correlation_matrix)
 
 
+X = data[['log_change_chocolate_midprice', 'log_change_strawberry_midprice', 'log_change_rose_midprice']]
+y = data['log_change_basket_midprice']
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+y_pred = model.predict(X_test)
+
+# model results
+mse = mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+print("MSE:", mse)
+print("R2:", r2)
+print("model coefficients:", model.coef_)
+print("model intercept:", model.intercept_)

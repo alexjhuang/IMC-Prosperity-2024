@@ -31,6 +31,7 @@ class Trader:
         traderData = jsonpickle.encode(self.resource_traders) # backup in case AWS messes up and deletes state
         result = self.orderManager.getAllOrders()
         self.orderManager.clearOrders()
+
         conversions = self.orderManager.conversions
         logger.flush(state, result, conversions, "sample")
         return result, conversions, traderData
@@ -79,7 +80,23 @@ class GiftItem(Traitor):
         self.best_ask_price = 0
         self.num_items_in_basket = 0
         self.position = 0
-        self.base_position = 0
+        self.previous_basket_price = 0
+        self.previous_chocolate_price = 0
+        self.previous_strawberry_price = 0
+        self.previous_rose_price = 0
+        self.basket_deviation = 0
+        self.chocolate_deviation = 0
+        self.strawberry_deviation = 0
+        self.rose_deviation = 0
+    
+
+    def get_mid_price(self, state: TradingState, symbol: str) -> float:
+        sell_orders = collections.OrderedDict(sorted(state.order_depths[symbol].sell_orders.items()))
+        buy_orders = collections.OrderedDict(sorted(state.order_depths[symbol].buy_orders.items(), reverse=True))
+        best_buy_price = next(reversed(buy_orders))
+        best_ask_price = next(reversed(sell_orders))
+        return (best_buy_price + best_ask_price) / 2
+
     
     def process(self, state: TradingState) -> None:
         self.position = state.position.get(self.symbol, 0)
@@ -87,9 +104,31 @@ class GiftItem(Traitor):
         self.buy_orders = collections.OrderedDict(sorted(state.order_depths[self.symbol].buy_orders.items(), reverse=True))
         self.best_buy_price = next(reversed(self.buy_orders))
         self.best_ask_price = next(reversed(self.sell_orders))
-        basket_position = state.position.get("GIFT_BASKET", 0)
-        self.base_position = basket_position * self.num_items_in_basket
-    
+        
+        for symbol in state.order_depths.keys():
+            mid_price = self.get_mid_price(state, symbol)
+            if symbol == "CHOCOLATE":
+                if self.previous_chocolate_price == 0:
+                    self.previous_chocolate_price = mid_price
+                self.chocolate_deviation = np.log(mid_price / self.previous_chocolate_price)
+                self.previous_chocolate_price = mid_price
+            elif symbol == "STRAWBERRIES":
+                if self.previous_strawberry_price == 0:
+                    self.previous_strawberry_price = mid_price
+                self.strawberry_deviation = np.log(mid_price / self.previous_strawberry_price)
+                self.previous_strawberry_price = mid_price
+            elif symbol == "ROSES":
+                if self.previous_rose_price == 0:
+                    self.previous_rose_price = mid_price
+                self.rose_deviation = np.log(mid_price / self.previous_rose_price)
+                self.previous_rose_price = mid_price
+            elif symbol == "GIFT_BASKET":
+                if self.previous_basket_price == 0:
+                    self.previous_basket_price = mid_price
+                self.basket_deviation = np.log(mid_price / self.previous_basket_price)
+                self.previous_basket_price = mid_price
+
+
     def trade(self, orderManager: OrderManager) -> None:
         pass
 
@@ -102,6 +141,32 @@ class ChocolateTrader(GiftItem):
     
     def process(self, state: TradingState) -> None:
         super().process(state)
+    
+    def trade(self, orderManager: OrderManager) -> None:
+        # Calculated deviations or some logic to determine these before calling this function
+        chocolate_deviation = self.chocolate_deviation
+        strawberry_deviation = self.strawberry_deviation
+        rose_deviation = self.rose_deviation
+        basket_deviation = self.basket_deviation
+
+        expected_chocolate_deviation = (basket_deviation - (0.24704658 * strawberry_deviation) - (0.20129926 * rose_deviation) + -2.9225094501384473e-08) / 0.42792465
+        deviation = chocolate_deviation - expected_chocolate_deviation
+
+        buy_threshold =   -0.000001
+        sell_threshold = 0.000001
+
+        logger.print(deviation)
+        predicted_price = self.previous_chocolate_price * np.exp(-deviation)
+        
+        for ask, vol in self.sell_orders.items():
+            if predicted_price < ask and self.position < self.product_limit:
+                order_volume = min(-vol, self.product_limit - self.position)
+                orderManager.createOrder(self.symbol, ask, order_volume)
+        
+        for bid, vol in self.buy_orders.items():
+            if predicted_price > bid and self.position > -self.product_limit:
+                order_volume = max(-vol, -self.product_limit - self.position)
+                orderManager.createOrder(self.symbol, bid, order_volume)
 
 
 class StrawberryTrader(GiftItem):
@@ -114,7 +179,7 @@ class StrawberryTrader(GiftItem):
         super().process(state)
     
     def trade(self, orderManager: OrderManager) -> None:
-        pass
+        orderManager.createOrder(self.symbol, self.best_ask_price, 0)
         
 
 class RoseTrader(GiftItem):
@@ -126,30 +191,20 @@ class RoseTrader(GiftItem):
     def process(self, state: TradingState) -> None:
         super().process(state)
 
+    def trade(self, orderManager: OrderManager) -> None:
+        orderManager.createOrder(self.symbol, self.best_ask_price, 0)
 
-class GiftTrader(Traitor):
+
+class GiftTrader(GiftItem):
     def __init__(self, symbol: str) -> None:
-        self.symbol = symbol
+        super().__init__(symbol)
         self.product_limit = 60
-        self.position = 0
-        self.sell_orders = None
-        self.buy_orders = None
-        self.best_buy_price = 0
-        self.best_ask_price = 0
-        self.acceptable_bid = 0
-        self.acceptable_ask = 0
     
     def process(self, state: TradingState) -> None:
-        self.position = state.position.get(self.symbol, 0)
-        self.sell_orders = collections.OrderedDict(sorted(state.order_depths[self.symbol].sell_orders.items()))
-        self.buy_orders = collections.OrderedDict(sorted(state.order_depths[self.symbol].buy_orders.items(), reverse=True))
-        self.best_buy_price = next(reversed(self.buy_orders))
-        self.best_ask_price = next(reversed(self.sell_orders))
-        self.acceptable_bid = self.best_ask_price - 1
-        self.acceptable_ask = self.best_buy_price + 1
+        super().process(state)
     
     def trade(self, orderManager: OrderManager) -> None:
-        pass
+        orderManager.createOrder(self.symbol, self.best_ask_price, 0)
 
 
 class OrchidTrader(Traitor):
