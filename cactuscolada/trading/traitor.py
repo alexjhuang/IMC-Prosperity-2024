@@ -208,7 +208,8 @@ class RoseTrader(GiftItem):
     
     def expected_price(self):
         expected_rose_deviation = (3.98579962 * self.basket_deviation) + (-1.29602731 * self.strawberry_deviation) + (-1.99003957 * self.chocolate_deviation) - 0.0019972956749151373
-        expected_rose_price = self.start_rose_price * np.exp(expected_rose_deviation) / 2
+        expected_rose_price = self.start_rose_price * np.exp(expected_rose_deviation)
+        current_rose_price = self.get_mid_price(state, "ROSES")
         return expected_rose_price
 
     def trade(self, orderManager: OrderManager) -> None:
