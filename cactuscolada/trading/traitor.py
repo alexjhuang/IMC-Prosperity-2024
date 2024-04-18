@@ -10,9 +10,9 @@ import jsonpickle
 class Trader:
     def __init__(self):
         self.resource_traders: Dict[Symbol, Traitor] = {
-            # "AMETHYSTS": AmethystTrader("AMETHYSTS"),
-            # "STARFRUIT": StarfruitTrader("STARFRUIT"),
-            # "ORCHIDS": OrchidTrader("ORCHIDS"),
+            "AMETHYSTS": AmethystTrader("AMETHYSTS"),
+            "STARFRUIT": StarfruitTrader("STARFRUIT"),
+            "ORCHIDS": OrchidTrader("ORCHIDS"),
             "GIFT_BASKET": GiftTrader("GIFT_BASKET"),
             "CHOCOLATE": ChocolateTrader("CHOCOLATE"),
             "STRAWBERRIES": StrawberryTrader("STRAWBERRIES"),
@@ -143,6 +143,7 @@ class GiftItem(Traitor):
 
     def trade(self, orderManager: OrderManager) -> None:
         expected_price = self.expected_price()
+        logger.print("Symbol: ", self.symbol, "Expected Price: ", expected_price, "Midprice: ", (self.best_buy_price + self.best_ask_price) / 2)
 
         current_position = self.position
 
@@ -172,8 +173,8 @@ class ChocolateTrader(GiftItem):
 
     def expected_price(self):
         expected_chocolate_deviation = (1.90804964 * self.basket_deviation) + (-0.57008893 * self.strawberry_deviation) + (-0.38161253 * self.rose_deviation) - 0.0002940641867402241
-        expected_chocolate_price = self.start_chocolate_price * np.exp(expected_chocolate_deviation) / self.num_items_in_basket
-        return expected_chocolate_price
+        expected_chocolate_price = self.start_chocolate_price * np.exp(expected_chocolate_deviation)
+        return (self.best_ask_price + self.best_buy_price) / 2
     
     def trade(self, orderManager: OrderManager) -> None:
         super().trade(orderManager)
@@ -191,7 +192,7 @@ class StrawberryTrader(GiftItem):
     def expected_price(self):
         expected_strawberry_deviation = (-1.01644375 * self.chocolate_deviation) + (-1.29602731 * self.rose_deviation) + (2.43743794 * self.basket_deviation) + 0.0018273749461782483
         expected_strawberry_price = self.start_strawberry_price * np.exp(expected_strawberry_deviation) / (self.num_items_in_basket)
-        return expected_strawberry_price
+        return (self.best_ask_price + self.best_buy_price) / 2
     
     def trade(self, orderManager: OrderManager) -> None:
         super().trade(orderManager)
@@ -209,8 +210,8 @@ class RoseTrader(GiftItem):
     def expected_price(self):
         expected_rose_deviation = (3.98579962 * self.basket_deviation) + (-1.29602731 * self.strawberry_deviation) + (-1.99003957 * self.chocolate_deviation) - 0.0019972956749151373
         expected_rose_price = self.start_rose_price * np.exp(expected_rose_deviation)
-        current_rose_price = self.get_mid_price(state, "ROSES")
-        return expected_rose_price
+
+        return (self.best_ask_price + self.best_buy_price) / 2
 
     def trade(self, orderManager: OrderManager) -> None:
         super().trade(orderManager)

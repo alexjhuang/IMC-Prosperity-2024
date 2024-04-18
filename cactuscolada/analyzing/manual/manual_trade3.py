@@ -44,7 +44,7 @@ class IntelligentAgent(Agent):
 cycles = 5
 # create 5000 agents and 5000 intelligent agents each with a radom seed
 dumb_agents = [Agent(random.randint(1, 5000)) for i in range(5000)]
-intelligent_agents = [IntelligentAgent(random.randint(1, 5000)) for i in range(5000)]
+intelligent_agents = [IntelligentAgent(random.randint(1, 8000)) for i in range(5000)]
 #combine agents
 agents = dumb_agents + intelligent_agents
 
